@@ -15,6 +15,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #define EXPORT_METHOD extern "C"
@@ -51,11 +52,13 @@ struct GameState
     unsigned int material_specular_loc;
     unsigned int material_shininess_loc;
 
-    unsigned int triangle_mesh_position_vbo;
-    unsigned int triangle_mesh_color_vbo;
+    unsigned int mesh_vertex_vbo;
+    unsigned int mesh_texture_vbo;
 
     unsigned int triangle_mesh_vao;
-    unsigned int triangle_mesh_ibo;
+    unsigned int mesh_ibo;
+
+    unsigned int texture;
 
     glm::vec3 light_position;
     glm::vec3 light_ambient{0.0f, 0.5f, 0.0f};
@@ -178,7 +181,37 @@ void delete_shader(int program_id)
     printf("Destroyed shader %d\n", program_id);
 }
 
-void load_triangle_mesh()
+unsigned int load_texture(const char *path)
+{
+    int width, height, num_channels;
+    unsigned char *data = stbi_load(path, &width, &height, &num_channels, 0);
+
+    if (!data)
+    {
+        fprintf(stderr, "Failed to load texture: %s\n", path);
+        stbi_image_free(data);
+        return -1;
+    }
+
+    unsigned int texture;
+    glGenTextures(1, &texture);
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    glGenerateMipmap(GL_TEXTURE_2D);
+
+    stbi_image_free(data);
+
+    printf("Loaded texture (%d) %s\n", texture, path);
+
+    return texture;
+}
+
+void load_quad_mesh()
 {
     float vertices[] = {
         0.5f, 0.5f, 0.0f,   // top right
@@ -187,11 +220,15 @@ void load_triangle_mesh()
         -0.5f, 0.5f, 0.0f   // top left
     };
 
-    float colors[] = {
-        0.0f, 1.0f, 1.0f, // top right
-        1.0f, 0.0f, 0.0f, // bottom right
-        0.0f, 1.0f, 0.0f, // bottom left
-        0.0f, 0.0f, 1.0f  // top left
+    float texture[] = {
+        1.0f,
+        0.0f,
+        1.0f,
+        1.0f,
+        0.0f,
+        1.0f,
+        0.0f,
+        0.0f,
     };
 
     unsigned int indices[] = {
@@ -200,25 +237,25 @@ void load_triangle_mesh()
     };
 
     glGenVertexArrays(1, &game_state.triangle_mesh_vao);
-    glGenBuffers(1, &game_state.triangle_mesh_position_vbo);
-    glGenBuffers(1, &game_state.triangle_mesh_color_vbo);
-    glGenBuffers(1, &game_state.triangle_mesh_ibo);
+    glGenBuffers(1, &game_state.mesh_vertex_vbo);
+    glGenBuffers(1, &game_state.mesh_texture_vbo);
+    glGenBuffers(1, &game_state.mesh_ibo);
 
     glBindVertexArray(game_state.triangle_mesh_vao);
 
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.triangle_mesh_position_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_vertex_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.triangle_mesh_color_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(colors), colors, GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_texture_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(texture), texture, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.triangle_mesh_ibo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -229,9 +266,9 @@ void load_triangle_mesh()
 void delete_triangle_mesh()
 {
     glDeleteVertexArrays(1, &game_state.triangle_mesh_vao);
-    glDeleteBuffers(1, &game_state.triangle_mesh_position_vbo);
-    glDeleteBuffers(1, &game_state.triangle_mesh_color_vbo);
-    glDeleteBuffers(1, &game_state.triangle_mesh_ibo);
+    glDeleteBuffers(1, &game_state.mesh_vertex_vbo);
+    glDeleteBuffers(1, &game_state.mesh_texture_vbo);
+    glDeleteBuffers(1, &game_state.mesh_ibo);
 }
 
 void load_fbo_quad()
@@ -354,7 +391,7 @@ unsigned int generate_fbo(unsigned int texture_id, unsigned int render_buffer_id
 
 EXPORT_METHOD bool init(void *shared_data_location)
 {
-    // glEnable(GL_FRAMEBUFFER_SRGB); 
+    // glEnable(GL_FRAMEBUFFER_SRGB);
 
     shared_data = (SharedData *)shared_data_location;
 
@@ -395,7 +432,9 @@ EXPORT_METHOD bool init(void *shared_data_location)
 
     game_state.light_position.z = -2.07f;
 
-    load_triangle_mesh();
+    load_quad_mesh();
+
+    game_state.texture = load_texture("res/textures/phoenix.png");
 
     return true;
 }
@@ -408,6 +447,8 @@ EXPORT_METHOD void deinit()
     delete_triangle_mesh();
 
     delete_shader(game_state.basic_shader);
+
+    glDeleteTextures(1, &game_state.texture);
 }
 
 EXPORT_METHOD void imgui_draw()
@@ -506,6 +547,8 @@ EXPORT_METHOD void render()
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
+
+        glBindTexture(GL_TEXTURE_2D, game_state.texture);
 
         glUseProgram(game_state.basic_shader);
         glBindVertexArray(game_state.triangle_mesh_vao);

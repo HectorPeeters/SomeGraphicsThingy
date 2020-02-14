@@ -90,15 +90,24 @@ void close_library()
 
 bool load_library()
 {
+#ifdef DEBUG
     std::ifstream src("./bin/Debug/libGame.so", std::ios::binary);
     std::ofstream dst("./bin/Debug/libGame_temp.so", std::ios::binary);
+#else
+    std::ifstream src("./bin/Release/libGame.so", std::ios::binary);
+    std::ofstream dst("./bin/Release/libGame_temp.so", std::ios::binary);
+#endif
 
     dst << src.rdbuf();
 
     src.close();
     dst.close();
 
+#ifdef DEBUG
     engine_state.library_handle = dlopen("./bin/Debug/libGame_temp.so", RTLD_LAZY);
+#else
+    engine_state.library_handle = dlopen("./bin/Release/libGame_temp.so", RTLD_LAZY);
+#endif
 
     if (!engine_state.library_handle)
     {
@@ -206,7 +215,7 @@ void glfw_error_callback(int error, const char *description)
 void APIENTRY gl_debug_output(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
     // if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
-        // return;
+    // return;
 
     log_error("---------------");
     log_error("Debug message (%d): %s", id, message);
@@ -304,7 +313,7 @@ void framebuffer_size_callback(Window window, int width, int height)
     glViewport(0, 0, width, height);
     shared_data.width = width;
     shared_data.height = height;
-    
+
     engine_state.resize(width, height);
 }
 
@@ -320,11 +329,11 @@ Window create_window()
     // glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
     // if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
     // {
-        //TODO: add logging back in
-        // glEnable(GL_DEBUG_OUTPUT);
-        // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-        // glDebugMessageCallback(gl_debug_output, nullptr);
-        // glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    //TODO: add logging back in
+    // glEnable(GL_DEBUG_OUTPUT);
+    // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    // glDebugMessageCallback(gl_debug_output, nullptr);
+    // glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
     // }
 
 #endif
@@ -351,7 +360,7 @@ Window create_window()
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    glfwSwapInterval(1);
+    glfwSwapInterval(0);
 
     return window;
 }

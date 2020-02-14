@@ -1,6 +1,18 @@
 workspace "Squirrel"
     configurations { "Debug", "Release" }
 
+    flags { "FatalWarnings", "MultiProcessorCompile", "ShadowedVariables" }
+
+
+    filter "configurations:Debug"
+        defines { "DEBUG" }
+        symbols "On"
+
+    filter "configurations:Release"
+        defines { "RELEASE" }
+        optimize "Speed"
+        flags { "LinkTimeOptimization" }
+
 include "modules/game"
 include "modules/imgui"
 include "modules/glad"
@@ -19,11 +31,3 @@ project "Squirrel"
     includedirs { "/usr/include/GLFW", "/usr/include/GL", "modules/imgui", "modules/glad/include" }
 
     links { "dl", "GL", "glfw", "Glad", "ImGui" }
-
-    filter "configurations:Debug"
-        defines { "DEBUG" }
-        symbols "On"
-
-    filter "configurations:Release"
-        defines { "NDEBUG" }
-        optimize "On"
