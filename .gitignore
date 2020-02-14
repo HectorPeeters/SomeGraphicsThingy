@@ -1,0 +1,13 @@
+bin/
+obj/
+.vscode/
+
+Makefile
+DynamicReloading.make
+
+imgui.ini
+render_doc.cap
+
+modules/game/Makefile
+modules/glad/Makefile
+modules/imgui/Makefile

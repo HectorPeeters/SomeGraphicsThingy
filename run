@@ -1,0 +1,3 @@
+make
+echo "\nStarting...\n"
+./bin/Debug/DynamicReloading
