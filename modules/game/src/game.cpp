@@ -592,7 +592,7 @@ EXPORT_METHOD void update(float delta)
 
 EXPORT_METHOD void render()
 {
-    // glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
     {
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -608,17 +608,13 @@ EXPORT_METHOD void render()
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
 
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, 0);
-    // glActiveTexture(GL_TEXTURE1);
-    // glBindTexture(GL_TEXTURE_2D, 0);
-    
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // {
-    //     glUseProgram(game_state.fbo_shader);
-    //     glBindVertexArray(game_state.quad_vao);
-    //     glDisable(GL_DEPTH_TEST);
-    //     glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
-    //     glDrawArrays(GL_TRIANGLES, 0, 6);
-    // }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    {
+        glUseProgram(game_state.fbo_shader);
+        glBindVertexArray(game_state.quad_vao);
+        glDisable(GL_DEPTH_TEST);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
 }
