@@ -11,3 +11,5 @@ render_doc.cap
 modules/game/Makefile
 modules/glad/Makefile
 modules/imgui/Makefile
+
+res/textures/8k

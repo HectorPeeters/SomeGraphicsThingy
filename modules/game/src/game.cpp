@@ -54,14 +54,20 @@ struct GameState
 
     unsigned int mesh_vertex_vbo;
     unsigned int mesh_texture_vbo;
+    unsigned int mesh_normal_vbo;
+    unsigned int mesh_tangent_vbo;
+    unsigned int mesh_bitangent_vbo;
 
-    unsigned int triangle_mesh_vao;
+    unsigned int mesh_vao;
     unsigned int mesh_ibo;
 
     unsigned int texture;
+    unsigned int normal_texture;
+
+    float model_scale = 1;
 
     glm::vec3 light_position;
-    glm::vec3 light_ambient{0.5f, 0.5f, 0.5f};
+    glm::vec3 light_ambient{0.0f, 0.0f, 0.0f};
     glm::vec3 light_diffuse{0.5f, 0.5f, 0.5f};
     glm::vec3 light_specular{0.5f, 0.5f, 0.5f};
 
@@ -154,7 +160,7 @@ unsigned int load_shader_program(const char *vertex_path, const char *fragment_p
     if (!success)
     {
         glGetProgramInfoLog(program_id, 512, NULL, info_log);
-        fprintf(stderr, "Shader Error: Failed to link shader program %s, %s\n", vertex_path, fragment_path);
+        fprintf(stderr, "Shader Error: Failed to link shader program %s, %s: %s\n", vertex_path, fragment_path, info_log);
         return -1;
     }
 
@@ -224,14 +230,31 @@ void load_quad_mesh()
     };
 
     float texture[] = {
-        1.0f,
-        0.0f,
-        1.0f,
-        1.0f,
-        0.0f,
-        1.0f,
-        0.0f,
-        0.0f,
+        1.0f, 0.0f, //
+        1.0f, 1.0f, //
+        0.0f, 1.0f, //
+        0.0f, 0.0f, //
+    };
+
+    float normals[] = {
+        0.0f, 0.0f, -1.0f, //
+        0.0f, 0.0f, -1.0f, //
+        0.0f, 0.0f, -1.0f, //
+        0.0f, 0.0f, -1.0f, //
+    };
+
+    float tangents[] = {
+        -1.0f, 0.0f, 0.0f, //
+        0.0f, 1.0f, 0.0f, //
+        1.0f, 0.0f, 0.0f, //
+        0.0f, -1.0f, 0.0f //
+    };
+
+    float bitangents[] = {
+        0.0f, -1.0f, 0.0f, //
+        -1.0f, 0.0f, 0.0f, //
+        0.0f, 1.0f, 0.0f, //
+        1.0f, 0.0f, 0.0f, //
     };
 
     unsigned int indices[] = {
@@ -239,12 +262,15 @@ void load_quad_mesh()
         1, 2, 3  // second Triangle
     };
 
-    glGenVertexArrays(1, &game_state.triangle_mesh_vao);
+    glGenVertexArrays(1, &game_state.mesh_vao);
     glGenBuffers(1, &game_state.mesh_vertex_vbo);
     glGenBuffers(1, &game_state.mesh_texture_vbo);
+    glGenBuffers(1, &game_state.mesh_normal_vbo);
+    glGenBuffers(1, &game_state.mesh_tangent_vbo);
+    glGenBuffers(1, &game_state.mesh_bitangent_vbo);
     glGenBuffers(1, &game_state.mesh_ibo);
 
-    glBindVertexArray(game_state.triangle_mesh_vao);
+    glBindVertexArray(game_state.mesh_vao);
 
     glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_vertex_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
@@ -258,6 +284,24 @@ void load_quad_mesh()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(1);
 
+    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_normal_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(2);
+
+    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_tangent_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(tangents), tangents, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(3);
+
+    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_bitangent_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(bitangents), bitangents, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(4);
+
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
@@ -268,43 +312,32 @@ void load_quad_mesh()
 
 void delete_triangle_mesh()
 {
-    glDeleteVertexArrays(1, &game_state.triangle_mesh_vao);
+    glDeleteVertexArrays(1, &game_state.mesh_vao);
     glDeleteBuffers(1, &game_state.mesh_vertex_vbo);
     glDeleteBuffers(1, &game_state.mesh_texture_vbo);
+    glDeleteBuffers(1, &game_state.mesh_normal_vbo);
+    glDeleteBuffers(1, &game_state.mesh_tangent_vbo);
+    glDeleteBuffers(1, &game_state.mesh_bitangent_vbo);
     glDeleteBuffers(1, &game_state.mesh_ibo);
 }
 
 void load_fbo_quad()
 {
     float vertices[] = {
-        -1.0f,
-        1.0f,
-        -1.0f,
-        -1.0f,
-        1.0f,
-        -1.0f,
+        -1.0f, 1.0f, -1.0f, //
+        -1.0f, 1.0f, -1.0f, //
 
-        -1.0f,
-        1.0f,
-        1.0f,
-        -1.0f,
-        1.0f,
-        1.0f,
+        -1.0f, 1.0f, 1.0f, //
+        -1.0f, 1.0f, 1.0f, //
     };
 
     float texture_coords[] = {
-        0.0f,
-        1.0f,
-        0.0f,
-        0.0f,
-        1.0f,
-        0.0f,
-        0.0f,
-        1.0f,
-        1.0f,
-        0.0f,
-        1.0f,
-        1.0f,
+        0.0f, 1.0f, //
+        0.0f, 0.0f, //
+        1.0f, 0.0f, //
+        0.0f, 1.0f, //
+        1.0f, 0.0f, //
+        1.0f, 1.0f, //
     };
 
     glGenVertexArrays(1, &game_state.quad_vao);
@@ -411,14 +444,14 @@ EXPORT_METHOD bool init(void *shared_data_location)
     game_state.fbo = generate_fbo(game_state.fbo_texture, game_state.fbo_rbo);
     load_fbo_quad();
 
-    glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    trans = glm::rotate(trans, glm::radians(0.0f), glm::vec3(0.0, 0.0, 1.0));
-    trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
+    // glm::mat4 trans = glm::mat4(1.0f);
+    // trans = glm::translate(trans, glm::vec3(0, 0, -2));
+    // trans = glm::rotate(trans, glm::radians(0.0f), glm::vec3(0.0, 0.0, 1.0));
+    // trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
 
     game_state.transfom_loc = glGetUniformLocation(game_state.basic_shader, "u_transform");
     glUseProgram(game_state.basic_shader);
-    glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
+    // glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
 
     game_state.projection_loc = glGetUniformLocation(game_state.basic_shader, "u_projection");
     game_state.camera_pos_loc = glGetUniformLocation(game_state.basic_shader, "u_cameraPos");
@@ -433,11 +466,15 @@ EXPORT_METHOD bool init(void *shared_data_location)
     game_state.material_specular_loc = glGetUniformLocation(game_state.basic_shader, "u_material.specular");
     game_state.material_shininess_loc = glGetUniformLocation(game_state.basic_shader, "u_material.shininess");
 
-    game_state.light_position.z = -2.07f;
+    game_state.light_position.z = -1.95f;
 
     load_quad_mesh();
 
-    game_state.texture = load_texture("res/textures/phoenix.png");
+    game_state.texture = load_texture("res/textures/2k/Tiles32_col.jpg");
+    game_state.normal_texture = load_texture("res/textures/2k/Tiles32_nrm.jpg");
+
+    glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_texture"), 0);
+    glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_normal_texture"), 1);
 
     return true;
 }
@@ -448,10 +485,13 @@ EXPORT_METHOD void deinit()
     glDeleteFramebuffers(1, &game_state.fbo);
 
     delete_triangle_mesh();
+    delete_fbo_quad();
 
     delete_shader(game_state.basic_shader);
+    delete_shader(game_state.fbo_shader);
 
     glDeleteTextures(1, &game_state.texture);
+    glDeleteTextures(1, &game_state.normal_texture);
 }
 
 EXPORT_METHOD void imgui_draw()
@@ -478,11 +518,13 @@ EXPORT_METHOD void imgui_draw()
 
     ImGui::Begin("Rendering");
 
+    ImGui::SliderFloat("Scale", &game_state.model_scale, 1, 20);
+
     if (ImGui::CollapsingHeader("Lighting"))
     {
         ImGui::SliderFloat("X", &game_state.light_position.x, -1, 1);
         ImGui::SliderFloat("Y", &game_state.light_position.y, -1, 1);
-        ImGui::SliderFloat("Z", &game_state.light_position.z, -2.0, -2.5);
+        ImGui::SliderFloat("Z", &game_state.light_position.z, -1, -1.999);
 
         ImGui::SliderFloat3("Light Ambient", glm::value_ptr(game_state.light_ambient), 0, 1);
         ImGui::SliderFloat3("Light Diffuse", glm::value_ptr(game_state.light_diffuse), 0, 1);
@@ -542,33 +584,41 @@ EXPORT_METHOD void update(float delta)
 
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    trans = glm::rotate(trans, glm::radians(float(sin(i / 2.0) * 5.0)), glm::vec3(0.0, 1.0, 0.0));
-    trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
+    // trans = glm::rotate(trans, glm::radians(float(sin(i / 2.0) * 5.0)), glm::vec3(0.0, 1.0, 0.0));
+    trans = glm::scale(trans, glm::vec3(game_state.model_scale));
 
     glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
 }
 
 EXPORT_METHOD void render()
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
+    // glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
     {
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, game_state.texture);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, game_state.normal_texture);
 
         glUseProgram(game_state.basic_shader);
-        glBindVertexArray(game_state.triangle_mesh_vao);
+        glBindVertexArray(game_state.mesh_vao);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    {
-        glUseProgram(game_state.fbo_shader);
-        glBindVertexArray(game_state.quad_vao);
-        glDisable(GL_DEPTH_TEST);
-        glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
+    // glActiveTexture(GL_TEXTURE0);
+    // glBindTexture(GL_TEXTURE_2D, 0);
+    // glActiveTexture(GL_TEXTURE1);
+    // glBindTexture(GL_TEXTURE_2D, 0);
+    
+    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // {
+    //     glUseProgram(game_state.fbo_shader);
+    //     glBindVertexArray(game_state.quad_vao);
+    //     glDisable(GL_DEPTH_TEST);
+    //     glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
+    //     glDrawArrays(GL_TRIANGLES, 0, 6);
+    // }
 }
