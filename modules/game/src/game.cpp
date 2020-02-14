@@ -16,7 +16,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 // #include <zlib.h>
-#include "puff.c"
+// #include "puff.c"
+#include "stb_image.h"
 
 #define EXPORT_METHOD extern "C"
 
@@ -233,8 +234,18 @@ bool uncompress_png_data(PngData &result)
     unsigned long uncompressed_size = result.data_pointer * 2;
     unsigned char *uncompressed_data = (unsigned char *)malloc(uncompressed_size);
 
+    printf("Data pointer %u\n", result.data_pointer);
+
+    for (int i = 0; i < result.data_pointer; i++)
+    {
+        printf("%02x ", result.data[i]);
+    }
+
+    printf("\n");
+
     //TODO: replace puff by zlib alternative or own method
-    int z_result = puff(uncompressed_data, &uncompressed_size, result.data, &result.data_pointer);
+    // int z_result = puff(uncompressed_data, &uncompressed_size, result.data, &result.data_pointer);
+    int z_result = 0;
 
     for (int i = 0; i < uncompressed_size; i++)
     {
@@ -269,7 +280,7 @@ bool uncompress_png_data(PngData &result)
 
     for (int i = 0; i < buffer_pointer; i++)
     {
-        if (i % 4 == 0)
+        if (i % 3 == 0)
             printf("\n");
         printf("%02x ", result.data[i]);
     }
