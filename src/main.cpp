@@ -33,8 +33,11 @@ struct EngineState
 
 struct SharedData
 {
-    int width;
-    int height;
+    unsigned int width;
+    unsigned int height;
+
+    double mouse_x;
+    double mouse_y;
 };
 
 EngineState engine_state;
@@ -360,7 +363,7 @@ Window create_window()
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    glfwSwapInterval(0);
+    glfwSwapInterval(1);
 
     return window;
 }
@@ -427,8 +430,6 @@ int main()
 
     setup_imgui(window);
 
-    glEnable(GL_MULTISAMPLE);
-
     while (!glfwWindowShouldClose(window))
     {
         gl_check_error();
@@ -436,6 +437,8 @@ int main()
         check_library_reload();
 
         glfwPollEvents();
+
+        glfwGetCursorPos(window, &shared_data.mouse_x, &shared_data.mouse_y);
 
         if (engine_state.update)
             engine_state.update(0.016f);

@@ -46,8 +46,6 @@ void main()
 
     frag_color = vec4(ambient, 1.0) + diffuse + vec4(specular, 1.0);
 
-    // float gamma = 2.2;
-    // frag_color.rgb = pow(frag_color.rgb, vec3(1.0 / gamma));
-
-    // frag_color = texture(u_texture, vertex_texture);
+    float gamma = 2.2;
+    frag_color.rgb = pow(frag_color.rgb, vec3(1.0 / gamma));
 } 

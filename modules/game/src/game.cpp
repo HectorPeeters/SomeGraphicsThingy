@@ -22,13 +22,13 @@
 
 struct GameState
 {
-    int basic_shader;
-    int uniform_count;
-    int attribute_count;
+    unsigned int basic_shader;
+    unsigned int uniform_count;
+    unsigned int attribute_count;
     char uniform_names[64][64];
     char attribute_names[64][64];
 
-    int fbo_shader;
+    unsigned int fbo_shader;
     unsigned int fbo;
     unsigned int fbo_rbo;
     unsigned int fbo_texture;
@@ -61,26 +61,29 @@ struct GameState
     unsigned int texture;
 
     glm::vec3 light_position;
-    glm::vec3 light_ambient{0.0f, 0.5f, 0.0f};
-    glm::vec3 light_diffuse{0.0f, 0.5f, 0.0f};
-    glm::vec3 light_specular{0.0f, 0.5f, 0.0f};
+    glm::vec3 light_ambient{0.5f, 0.5f, 0.5f};
+    glm::vec3 light_diffuse{0.5f, 0.5f, 0.5f};
+    glm::vec3 light_specular{0.5f, 0.5f, 0.5f};
 
-    glm::vec3 material_ambient{0.0f, 0.5f, 0.0f};
-    glm::vec3 material_diffuse{0.0f, 0.5f, 0.0f};
-    glm::vec3 material_specular{0.0f, 0.5f, 0.0f};
+    glm::vec3 material_ambient{0.5f, 0.5f, 0.5f};
+    glm::vec3 material_diffuse{0.5f, 0.5f, 0.5f};
+    glm::vec3 material_specular{0.5f, 0.5f, 0.5f};
     int material_shininess = 32;
 };
 
 struct SharedData
 {
-    int width;
-    int height;
+    unsigned int width;
+    unsigned int height;
+
+    double mouse_x;
+    double mouse_y;
 };
 
 GameState game_state;
 SharedData *shared_data;
 
-int load_shader_program(const char *vertex_path, const char *fragment_path)
+unsigned int load_shader_program(const char *vertex_path, const char *fragment_path)
 {
     std::string vertex_code;
     std::string fragment_code;
@@ -111,7 +114,7 @@ int load_shader_program(const char *vertex_path, const char *fragment_path)
         return -1;
     }
 
-    int vertex_id, fragment_id;
+    unsigned int vertex_id, fragment_id;
     int success;
     char info_log[512];
 
@@ -142,7 +145,7 @@ int load_shader_program(const char *vertex_path, const char *fragment_path)
         return -1;
     }
 
-    int program_id = glCreateProgram();
+    unsigned int program_id = glCreateProgram();
     glAttachShader(program_id, vertex_id);
     glAttachShader(program_id, fragment_id);
     glLinkProgram(program_id);
@@ -494,6 +497,11 @@ EXPORT_METHOD void imgui_draw()
         ImGui::SliderInt("Light Shininess", &game_state.material_shininess, 0, 100);
     }
 
+    ImGui::End();
+
+    ImGui::Begin("Input");
+    ImGui::Text("Mouse X: %f", shared_data->mouse_x);
+    ImGui::Text("Mouse Y: %f", shared_data->mouse_y);
     ImGui::End();
 }
 
