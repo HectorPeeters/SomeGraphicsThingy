@@ -1,11 +1,11 @@
-workspace "DynamicReloading"
+workspace "Squirrel"
     configurations { "Debug", "Release" }
 
 include "modules/game"
 include "modules/imgui"
 include "modules/glad"
 
-project "DynamicReloading"
+project "Squirrel"
     kind "ConsoleApp"
     language "C++"
     cppdialect "C++17"
