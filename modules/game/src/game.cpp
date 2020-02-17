@@ -52,6 +52,9 @@ struct GameState
     unsigned int material_specular_loc;
     unsigned int material_shininess_loc;
 
+    unsigned int exposure_loc;
+    float exposure = 1.0;
+
     unsigned int mesh_vertex_vbo;
     unsigned int mesh_texture_vbo;
     unsigned int mesh_normal_vbo;
@@ -376,7 +379,7 @@ unsigned int generate_texture(unsigned int width, unsigned int height)
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -466,6 +469,7 @@ EXPORT_METHOD bool init(void *shared_data_location)
     game_state.material_specular_loc = glGetUniformLocation(game_state.basic_shader, "u_material.specular");
     game_state.material_shininess_loc = glGetUniformLocation(game_state.basic_shader, "u_material.shininess");
 
+
     game_state.light_position.z = -1.95f;
 
     load_quad_mesh();
@@ -476,6 +480,9 @@ EXPORT_METHOD bool init(void *shared_data_location)
     glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_texture"), 0);
     glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_normal_texture"), 1);
 
+    glUseProgram(game_state.fbo_shader);
+
+    game_state.exposure_loc = glGetUniformLocation(game_state.fbo_shader, "u_exposure");
     return true;
 }
 
@@ -519,6 +526,7 @@ EXPORT_METHOD void imgui_draw()
     ImGui::Begin("Rendering");
 
     ImGui::SliderFloat("Scale", &game_state.model_scale, 1, 20);
+    ImGui::SliderFloat("Exposure", &game_state.exposure, 0, 5);
 
     if (ImGui::CollapsingHeader("Lighting"))
     {
@@ -527,14 +535,14 @@ EXPORT_METHOD void imgui_draw()
         ImGui::SliderFloat("Z", &game_state.light_position.z, -1, -1.999);
 
         ImGui::SliderFloat3("Light Ambient", glm::value_ptr(game_state.light_ambient), 0, 1);
-        ImGui::SliderFloat3("Light Diffuse", glm::value_ptr(game_state.light_diffuse), 0, 1);
+        ImGui::SliderFloat3("Light Diffuse", glm::value_ptr(game_state.light_diffuse), 0, 10);
         ImGui::SliderFloat3("Light Specular", glm::value_ptr(game_state.light_specular), 0, 1);
     }
 
     if (ImGui::CollapsingHeader("Material"))
     {
         ImGui::SliderFloat3("Mat Ambient", glm::value_ptr(game_state.material_ambient), 0, 1);
-        ImGui::SliderFloat3("Mat Diffuse", glm::value_ptr(game_state.material_diffuse), 0, 1);
+        ImGui::SliderFloat3("Mat Diffuse", glm::value_ptr(game_state.material_diffuse), 0, 10);
         ImGui::SliderFloat3("Mat Specular", glm::value_ptr(game_state.material_specular), 0, 1);
         ImGui::SliderInt("Light Shininess", &game_state.material_shininess, 0, 100);
     }
@@ -584,10 +592,13 @@ EXPORT_METHOD void update(float delta)
 
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    trans = glm::rotate(trans, glm::radians(-45.0f), glm::vec3(1.0, 0.0, 0.0));
+    trans = glm::rotate(trans, glm::radians(-0.0f), glm::vec3(1.0, 0.0, 0.0));
     trans = glm::scale(trans, glm::vec3(game_state.model_scale));
 
     glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
+
+    glUseProgram(game_state.fbo_shader);
+    glUniform1f(game_state.exposure_loc, game_state.exposure);
 }
 
 EXPORT_METHOD void render()

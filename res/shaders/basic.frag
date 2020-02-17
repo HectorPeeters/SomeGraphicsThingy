@@ -40,18 +40,15 @@ void main()
     normal = (normal * 2.0 - 1.0);
     normal.y = -normal.y;
     normal = fs_in.TBN * normal;
-    
-    vec4 material_diffuse = texture(u_texture, fs_in.vertex_texture);
 
-    // vec3 ambient = u_light.ambient * u_material.ambient; // * light_color
+    vec3 ambient = u_light.ambient * u_material.ambient; // * light_color
 
     vec3 to_light_vector =  fs_in.TBN * normalize(u_light.position - fs_in.vertex_pos);
 
     float diff = max(dot(normal, to_light_vector), 0.01);
 
-    // vec4 material_diffuse = texture(u_texture, fs_in.vertex_texture);
-    vec4 diffuse =  (diff * material_diffuse); // u_material.diffuse
-    // vec4(u_light.diffuse, 1.0) *
+    vec4 material_diffuse = texture(u_texture, fs_in.vertex_texture);
+    vec4 diffuse = vec4(u_light.diffuse, 1.0) * (diff * material_diffuse); // u_material.diffuse
 
     // vec3 view_dir = normalize(u_cameraPos - vertex_pos);
     // vec3 reflect_dir = reflect(-to_light_vector, norm);
