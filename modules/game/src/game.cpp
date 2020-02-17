@@ -584,7 +584,7 @@ EXPORT_METHOD void update(float delta)
 
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    // trans = glm::rotate(trans, glm::radians(float(sin(i / 2.0) * 5.0)), glm::vec3(0.0, 1.0, 0.0));
+    trans = glm::rotate(trans, glm::radians(-45.0f), glm::vec3(1.0, 0.0, 0.0));
     trans = glm::scale(trans, glm::vec3(game_state.model_scale));
 
     glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));

@@ -6,10 +6,7 @@ in VS_OUT
 {
     vec3 vertex_pos;
     vec2 vertex_texture;
-    vec3 T;
-    vec3 B;
-    vec3 N;
-    // mat3 TBN;
+    mat3 TBN;
 } fs_in;
 
 struct Material
@@ -39,18 +36,16 @@ uniform sampler2D u_normal_texture;
 
 void main()
 {
-    mat3 TBN = transpose(mat3(fs_in.T, fs_in.B, fs_in.N));
     vec3 normal = texture(u_normal_texture, fs_in.vertex_texture).rgb;
     normal = (normal * 2.0 - 1.0);
     normal.y = -normal.y;
-    normal = TBN * normal;
+    normal = fs_in.TBN * normal;
     
-
     vec4 material_diffuse = texture(u_texture, fs_in.vertex_texture);
 
     // vec3 ambient = u_light.ambient * u_material.ambient; // * light_color
 
-    vec3 to_light_vector =  TBN * normalize(u_light.position - fs_in.vertex_pos);
+    vec3 to_light_vector =  fs_in.TBN * normalize(u_light.position - fs_in.vertex_pos);
 
     float diff = max(dot(normal, to_light_vector), 0.01);
 

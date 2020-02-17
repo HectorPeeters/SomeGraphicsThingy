@@ -42,7 +42,7 @@ ifeq ($(config),release)
   TARGETDIR = bin/Release
   TARGET = $(TARGETDIR)/Squirrel
   OBJDIR = obj/Release/Release/Squirrel
-  DEFINES += -DNDEBUG
+  DEFINES += -DRELEASE
   INCLUDES += -I/usr/include/GLFW -I/usr/include/GL -Imodules/imgui -Imodules/glad/include
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MMD -MP $(DEFINES) $(INCLUDES)
