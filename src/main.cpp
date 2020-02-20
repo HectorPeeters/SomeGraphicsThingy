@@ -38,6 +38,10 @@ struct SharedData
 
     double mouse_x;
     double mouse_y;
+
+    bool keys[1024];
+
+    bool game_focussed = true;
 };
 
 EngineState engine_state;
@@ -220,77 +224,82 @@ void APIENTRY gl_debug_output(GLenum source, GLenum type, GLuint id, GLenum seve
     // if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
     // return;
 
-    log_error("---------------");
-    log_error("Debug message (%d): %s", id, message);
+    if (severity <= GL_DEBUG_SEVERITY_LOW)
+        return;
+
+    log_error("-----------------------------------\n");
+    log_error("Debug message (%d): %s\n", id, message);
 
     switch (source)
     {
     case GL_DEBUG_SOURCE_API:
-        log_error("Source: API");
+        log_error("Source: API\n");
         break;
     case GL_DEBUG_SOURCE_WINDOW_SYSTEM:
-        log_error("Source: Window System");
+        log_error("Source: Window System\n");
         break;
     case GL_DEBUG_SOURCE_SHADER_COMPILER:
-        log_error("Source: Shader Compiler");
+        log_error("Source: Shader Compiler\n");
         break;
     case GL_DEBUG_SOURCE_THIRD_PARTY:
-        log_error("Source: Third Party");
+        log_error("Source: Third Party\n");
         break;
     case GL_DEBUG_SOURCE_APPLICATION:
-        log_error("Source: Application");
+        log_error("Source: Application\n");
         break;
     case GL_DEBUG_SOURCE_OTHER:
-        log_error("Source: Other");
+        log_error("Source: Other\n");
         break;
     }
 
     switch (type)
     {
     case GL_DEBUG_TYPE_ERROR:
-        log_error("Type: Error");
+        log_error("Type: Error\n");
         break;
     case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:
-        log_error("Type: Deprecated Behaviour");
+        log_error("Type: Deprecated Behaviour\n");
         break;
     case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:
-        log_error("Type: Undefined Behaviour");
+        log_error("Type: Undefined Behaviour\n");
         break;
     case GL_DEBUG_TYPE_PORTABILITY:
-        log_error("Type: Portability");
+        log_error("Type: Portability\n");
         break;
     case GL_DEBUG_TYPE_PERFORMANCE:
-        log_error("Type: Performance");
+        log_error("Type: Performance\n");
         break;
     case GL_DEBUG_TYPE_MARKER:
-        log_error("Type: Marker");
+        log_error("Type: Marker\n");
         break;
     case GL_DEBUG_TYPE_PUSH_GROUP:
-        log_error("Type: Push Group");
+        log_error("Type: Push Group\n");
         break;
     case GL_DEBUG_TYPE_POP_GROUP:
-        log_error("Type: Pop Group");
+        log_error("Type: Pop Group\n");
         break;
     case GL_DEBUG_TYPE_OTHER:
-        log_error("Type: Other");
+        log_error("Type: Other\n");
         break;
     }
 
     switch (severity)
     {
     case GL_DEBUG_SEVERITY_HIGH:
-        log_error("Severity: high");
+        log_error("Severity: high\n");
         break;
     case GL_DEBUG_SEVERITY_MEDIUM:
-        log_error("Severity: medium");
+        log_error("Severity: medium\n");
         break;
     case GL_DEBUG_SEVERITY_LOW:
-        log_error("Severity: low");
+        log_error("Severity: low\n");
         break;
     case GL_DEBUG_SEVERITY_NOTIFICATION:
-        log_error("Severity: notification");
+        log_error("Severity: notification\n");
         break;
     }
+
+    log_error("-----------------------------------\n");
 }
 
 bool init_glfw()
@@ -320,25 +329,34 @@ void framebuffer_size_callback(Window window, int width, int height)
     engine_state.resize(width, height);
 }
 
+void key_callback(Window window, int key, int scancode, int action, int mods)
+{
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    {
+        int current_mode = glfwGetInputMode(window, GLFW_CURSOR);
+        glfwSetInputMode(window, GLFW_CURSOR, current_mode == GLFW_CURSOR_DISABLED ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
+        shared_data.game_focussed = current_mode != GLFW_CURSOR_DISABLED;
+    }
+    
+    if (action == GLFW_PRESS)
+        shared_data.keys[key] = true;
+    if (action == GLFW_RELEASE)
+        shared_data.keys[key] = false;
+}
+
+void cursor_position_callback(Window window, double x_pos, double y_pos)
+{
+    shared_data.mouse_x = x_pos;
+    shared_data.mouse_y = y_pos;
+}
+
 Window create_window()
 {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 
 #ifdef DEBUG
-    // glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
-
-    // int flags;
-    // glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-    // if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
-    // {
-    //TODO: add logging back in
-    // glEnable(GL_DEBUG_OUTPUT);
-    // glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    // glDebugMessageCallback(gl_debug_output, nullptr);
-    // glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-    // }
-
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
 
     Window window = glfwCreateWindow(640, 480, "Reloading", NULL, NULL);
@@ -361,7 +379,21 @@ Window create_window()
         return nullptr;
     }
 
+    int flags;
+    glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
+    if (flags & GL_CONTEXT_FLAG_DEBUG_BIT)
+    {
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(gl_debug_output, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+    }
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
 
     glfwSwapInterval(1);
 
@@ -437,8 +469,6 @@ int main()
         check_library_reload();
 
         glfwPollEvents();
-
-        glfwGetCursorPos(window, &shared_data.mouse_x, &shared_data.mouse_y);
 
         if (engine_state.update)
             engine_state.update(0.016f);
