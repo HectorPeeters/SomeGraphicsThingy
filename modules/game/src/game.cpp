@@ -147,6 +147,8 @@
 
 #define KEY_LAST KEY_MENU
 
+#define PI 3.141592653689
+
 #define EXPORT_METHOD extern "C"
 
 struct GameState
@@ -219,7 +221,7 @@ struct GameState
     double last_mouse_y = -1;
 
     float pitch = 0;
-    float yaw = 0;
+    float yaw = -90;
 };
 
 struct SharedData
@@ -793,7 +795,7 @@ EXPORT_METHOD void update(float delta)
 
     glm::mat4 trans = glm::mat4(1.0f);
     trans = glm::translate(trans, glm::vec3(0, 0, 0));
-    trans = glm::rotate(trans, glm::radians(-0.0f), glm::vec3(1.0, 0.0, 0.0));
+    // trans = glm::rotate(trans, glm::radians(-0.0f), glm::vec3(1.0, 0.0, 0.0));
     trans = glm::scale(trans, glm::vec3(game_state.model_scale));
     glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
 
