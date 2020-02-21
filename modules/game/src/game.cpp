@@ -240,6 +240,59 @@ struct SharedData
 GameState game_state;
 SharedData *shared_data;
 
+bool read_voxel_header(FILE *file)
+{
+    const unsigned char header[] = {0x56, 0x4F, 0x58, 0x20};
+    unsigned char *buff = (unsigned char *)malloc(4 * sizeof(char));
+
+    fread(buff, 4, 1, file);
+
+    bool success = memcmp(buff, header, 4) == 0;
+
+    fread(buff, 4, 1, file);
+
+    free(buff);
+
+    return success;
+}
+
+bool read_voxel_chunk(FILE *file)
+{
+    printf("%lu\n", sizeof(GameState));
+    char name_buff[4];
+
+    fread(name_buff, 4, 1, file);
+
+    printf("%s\n", name_buff);
+
+    if (strcmp(name_buff, "MAIN"))
+    {
+        printf("MAIN CHUNK!");
+    }
+
+    return false;
+}
+
+void read_voxel(const char *path)
+{
+    FILE *file = fopen(path, "rb");
+    fseek(file, 0, SEEK_END);
+    long file_length = ftell(file);
+    rewind(file);
+
+    if (!read_voxel_header(file))
+    {
+        fprintf(stderr, "Failed to load voxel file '%s': voxel header not present\n", path);
+        return;
+    }
+
+    while (read_voxel_chunk(file))
+    {
+    }
+
+    fclose(file);
+}
+
 unsigned int load_shader_program(const char *vertex_path, const char *fragment_path)
 {
     std::string vertex_code;
@@ -631,6 +684,9 @@ EXPORT_METHOD bool init(void *shared_data_location)
     glUseProgram(game_state.fbo_shader);
 
     game_state.exposure_loc = glGetUniformLocation(game_state.fbo_shader, "u_exposure");
+
+    read_voxel("res/models/monu9.vox");
+
     return true;
 }
 
@@ -719,16 +775,7 @@ float i = 0;
 void update_camera()
 {
     const float camera_speed = 0.05f;
-
-    if (shared_data->keys[KEY_W])
-        game_state.camera_pos += camera_speed * game_state.camera_front;
-    if (shared_data->keys[KEY_S])
-        game_state.camera_pos -= camera_speed * game_state.camera_front;
-
-    if (shared_data->keys[KEY_A])
-        game_state.camera_pos -= glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
-    if (shared_data->keys[KEY_D])
-        game_state.camera_pos += glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
+    const float mouse_sensitivity = 0.05f;
 
     if (game_state.last_mouse_x == -1 || game_state.last_mouse_x == -1)
     {
@@ -744,7 +791,22 @@ void update_camera()
 
     if (shared_data->game_focussed)
     {
-        const float mouse_sensitivity = 0.05f;
+
+        if (shared_data->keys[KEY_W])
+            game_state.camera_pos += camera_speed * game_state.camera_front;
+        if (shared_data->keys[KEY_S])
+            game_state.camera_pos -= camera_speed * game_state.camera_front;
+
+        if (shared_data->keys[KEY_A])
+            game_state.camera_pos -= glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
+        if (shared_data->keys[KEY_D])
+            game_state.camera_pos += glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
+
+        if (shared_data->keys[KEY_SPACE])
+            game_state.camera_pos.y += camera_speed;
+        if (shared_data->keys[KEY_LEFT_SHIFT])
+            game_state.camera_pos.y -= camera_speed;
+
         dx *= mouse_sensitivity;
         dy *= mouse_sensitivity;
 
@@ -794,8 +856,8 @@ EXPORT_METHOD void update(float delta)
     glUniformMatrix4fv(game_state.view_loc, 1, GL_FALSE, glm::value_ptr(game_state.view_matrix));
 
     glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(0, 0, 0));
-    // trans = glm::rotate(trans, glm::radians(-0.0f), glm::vec3(1.0, 0.0, 0.0));
+    trans = glm::translate(trans, glm::vec3(0, 0, -2));
+    // trans = glm::rotate(trans, glm::radians(-90.0f), glm::vec3(0.0, 1.0, 0.0));
     trans = glm::scale(trans, glm::vec3(game_state.model_scale));
     glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
 

@@ -55,8 +55,7 @@ void main()
     // float spec = pow(max(dot(view_dir, reflect_dir), 0.0), u_material.shininess);
     // vec3 specular = u_light.ambient * (spec * u_material.specular);
 
-    // frag_color = diffuse * diff;//vec4(ambient, 1.0) + diffuse;// + vec4(specular, 1.0);
-    frag_color = diffuse;//vec4(diff, diff, diff, 1.0);//vec4(diff, diff, diff, 1.0);
+    frag_color = diffuse;
 
     // float gamma = 2.2;
     // frag_color.rgb = pow(frag_color.rgb, vec3(1.0 / gamma));
