@@ -14,8 +14,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/string_cast.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -153,7 +151,7 @@
 
 #define PI 3.141592653689
 
-#define VOXEL_DEBUG
+// #define VOXEL_DEBUG
 
 #define EXPORT_METHOD extern "C"
 
@@ -177,8 +175,14 @@ struct VoxelColor
 struct VoxelData
 {
     unsigned int size_x, size_y, size_z;
-    unsigned int voxel_count;
+    unsigned int voxel_count = -1;
     Voxel *voxels;
+};
+
+struct VoxelMesh
+{
+    std::vector<VoxelData> sub_meshes;
+    VoxelData *current_mesh;
     VoxelColor colors[256];
 };
 
@@ -254,7 +258,7 @@ struct GameState
     float pitch = 0;
     float yaw = -90;
 
-    VoxelData voxel;
+    VoxelMesh voxel;
 
     unsigned int voxel_shader;
 
@@ -266,6 +270,8 @@ struct GameState
     unsigned int voxel_transform_loc;
     unsigned int voxel_view_loc;
     unsigned int voxel_color_loc;
+
+    int submesh_count;
 };
 
 struct SharedData
@@ -302,13 +308,19 @@ bool read_voxel_header(FILE *file)
     return success;
 }
 
-bool read_voxel_chunk_size(FILE *file, VoxelData &result, long &pos)
+bool read_voxel_chunk_size(FILE *file, VoxelMesh &result, long &pos)
 {
-    fread(&result.size_x, 4, 1, file);
+    if (result.current_mesh != nullptr)
+    {
+        result.sub_meshes.push_back(*result.current_mesh);
+        result.current_mesh = new VoxelData();
+    }
+
+    fread(&result.current_mesh->size_x, 4, 1, file);
     pos += 4;
-    fread(&result.size_y, 4, 1, file);
+    fread(&result.current_mesh->size_y, 4, 1, file);
     pos += 4;
-    fread(&result.size_z, 4, 1, file);
+    fread(&result.current_mesh->size_z, 4, 1, file);
     pos += 4;
 
 #ifdef VOXEL_DEBUG
@@ -318,23 +330,23 @@ bool read_voxel_chunk_size(FILE *file, VoxelData &result, long &pos)
     return true;
 }
 
-bool read_voxel_chunk_xyzi(FILE *file, VoxelData &result, long &pos)
+bool read_voxel_chunk_xyzi(FILE *file, VoxelMesh &result, long &pos)
 {
-    fread(&result.voxel_count, 4, 1, file);
+    fread(&result.current_mesh->voxel_count, 4, 1, file);
     pos += 4;
 
 #ifdef VOXEL_DEBUG
     printf("\t%d\n", result.voxel_count);
 #endif
 
-    result.voxels = new Voxel[result.voxel_count];
+    result.current_mesh->voxels = new Voxel[result.current_mesh->voxel_count];
 
-    for (int i = 0; i < result.voxel_count; i++)
+    for (int i = 0; i < result.current_mesh->voxel_count; i++)
     {
-        fread(&result.voxels[i], 4, 1, file);
+        fread(&result.current_mesh->voxels[i], 4, 1, file);
         pos += 4;
 
-        result.voxels[i].color_index--;
+        result.current_mesh->voxels[i].color_index--;
 
 #ifdef VOXEL_DEBUG
         printf("\t%d %d %d: %d\n", result.voxels[i].x, result.voxels[i].y, result.voxels[i].z, result.voxels[i].color_index);
@@ -346,25 +358,24 @@ bool read_voxel_chunk_xyzi(FILE *file, VoxelData &result, long &pos)
 
 unsigned int switch_endian(unsigned int x)
 {
-	return (((x>>24) & 0x000000ff) | ((x>>8) & 0x0000ff00) | ((x<<8) & 0x00ff0000) | ((x<<24) & 0xff000000));
+    return (((x >> 24) & 0x000000ff) | ((x >> 8) & 0x0000ff00) | ((x << 8) & 0x00ff0000) | ((x << 24) & 0xff000000));
 }
 
-bool read_voxel_chunk_rgba(FILE *file, VoxelData &result, long &pos)
+bool read_voxel_chunk_rgba(FILE *file, VoxelMesh &result, long &pos)
 {
     for (int i = 0; i < 256; i++)
     {
-        
+
         unsigned int color;
         fread(&color, 4, 1, file);
         pos += 4;
 
         color = switch_endian(color);
 
-        result.colors[i].r = ((color >> 8*3) & 0xFF) / 256.0f;
-        result.colors[i].g = ((color >> 8*2) & 0xFF) / 256.0f;
+        result.colors[i].r = ((color >> 8 * 3) & 0xFF) / 256.0f;
+        result.colors[i].g = ((color >> 8 * 2) & 0xFF) / 256.0f;
         result.colors[i].b = ((color >> 8) & 0xFF) / 256.0f;
-        result.colors[i].a = ((color) & 0xFF) / 256.0f;
-
+        result.colors[i].a = ((color)&0xFF) / 256.0f;
 
 #ifdef VOXEL_DEBUG
         if (result.colors[i].r != result.colors[i].g)
@@ -378,7 +389,165 @@ bool read_voxel_chunk_rgba(FILE *file, VoxelData &result, long &pos)
     return true;
 }
 
-bool read_voxel_chunk(FILE *file, VoxelData &result, long &pos)
+const char *read_voxel_chunk_string(FILE *file, long &pos)
+{
+    int length;
+    fread(&length, 4, 1, file);
+    pos += 4;
+
+    const char *result = new char[length];
+
+    for (int i = 0; i < length; i++)
+    {
+        fread((void *)&result[i], 1, 1, file);
+        pos++;
+    }
+
+    printf("\tString: %s\n", result);
+
+    delete[] result;
+
+    return result;
+}
+
+bool read_voxel_chunk_dict(FILE *file, long &pos)
+{
+    unsigned int n;
+    fread(&n, 4, 1, file);
+    pos += 4;
+
+    printf("Dict length: %d\n", n);
+
+    for (int i = 0; i < n; i++)
+    {
+        read_voxel_chunk_string(file, pos);
+        read_voxel_chunk_string(file, pos);
+    }
+
+    return true;
+}
+
+bool read_voxel_chunk_ntrn(FILE *file, VoxelMesh &result, long &pos)
+{
+    int node_id;
+    fread(&node_id, 4, 1, file);
+    pos += 4;
+
+    read_voxel_chunk_dict(file, pos);
+
+    int child_id;
+    fread(&child_id, 4, 1, file);
+    pos += 4;
+
+    int reserved_id;
+    fread(&reserved_id, 4, 1, file);
+    pos += 4;
+
+    if (reserved_id != -1)
+        return false;
+
+    int layer_id;
+    fread(&layer_id, 4, 1, file);
+    pos += 4;
+
+    int num_frames;
+    fread(&num_frames, 4, 1, file);
+    pos += 4;
+
+    if (num_frames != 1)
+        return false;
+
+    read_voxel_chunk_dict(file, pos);
+
+    return true;
+}
+
+bool read_voxel_chunk_ngrp(FILE *file, VoxelMesh &result, long &pos)
+{
+    int node_id;
+    fread(&node_id, 4, 1, file);
+    pos += 4;
+
+    read_voxel_chunk_dict(file, pos);
+
+    int n;
+    fread(&n, 4, 1, file);
+    pos += 4;
+
+    for (int i = 0; i < n; i++)
+    {
+        int child_id;
+        fread(&child_id, 4, 1, file);
+        pos += 4;
+    }
+
+    return true;
+}
+
+bool read_voxel_chunk_nshp(FILE *file, VoxelMesh &result, long &pos)
+{
+    int node_id;
+    fread(&node_id, 4, 1, file);
+    pos += 4;
+
+    read_voxel_chunk_dict(file, pos);
+
+    int num_models;
+    fread(&num_models, 4, 1, file);
+    pos += 4;
+
+    if (num_models != 1)
+        return false;
+
+    for (int i = 0; i < num_models; i++)
+    {
+        int child_id;
+        fread(&child_id, 4, 1, file);
+        pos += 4;
+
+        read_voxel_chunk_dict(file, pos);
+    }
+
+    return true;
+}
+
+bool read_voxel_chunk_layr(FILE *file, VoxelMesh &result, long &pos)
+{
+    int layer_id;
+    fread(&layer_id, 4, 1, file);
+    pos += 4;
+
+    read_voxel_chunk_dict(file, pos);
+
+    int reserved_id;
+    fread(&reserved_id, 4, 1, file);
+    pos += 4;
+
+    if (reserved_id != -1)
+        return false;
+
+    return true;
+}
+
+bool read_voxel_chunk_matl(FILE *file, VoxelMesh &result, long &pos)
+{
+    int mat_id;
+    fread(&mat_id, 4, 1, file);
+    pos += 4;
+
+    read_voxel_chunk_dict(file, pos);
+
+    return true;
+}
+
+bool read_voxel_chunk_robj(FILE *file, VoxelMesh &result, long &pos)
+{
+    read_voxel_chunk_dict(file, pos);
+
+    return true;
+}
+
+bool read_voxel_chunk(FILE *file, VoxelMesh &result, long &pos)
 {
     char name_buff[4];
     fread(name_buff, 4, 1, file);
@@ -392,9 +561,9 @@ bool read_voxel_chunk(FILE *file, VoxelData &result, long &pos)
     fread(&children_size, 4, 1, file);
     pos += 4;
 
-#ifdef VOXEL_DEBUG
+    // #ifdef VOXEL_DEBUG
     printf("Chunk %s: %d %d\n", name_buff, size, children_size);
-#endif
+    // #endif
 
     if (strcmp(name_buff, "MAIN") == 0)
     {
@@ -412,11 +581,35 @@ bool read_voxel_chunk(FILE *file, VoxelData &result, long &pos)
     {
         return read_voxel_chunk_rgba(file, result, pos);
     }
+    else if (strcmp(name_buff, "nTRN") == 0)
+    {
+        return read_voxel_chunk_ntrn(file, result, pos);
+    }
+    else if (strcmp(name_buff, "nGRP") == 0)
+    {
+        return read_voxel_chunk_ngrp(file, result, pos);
+    }
+    else if (strcmp(name_buff, "nSHP") == 0)
+    {
+        return read_voxel_chunk_nshp(file, result, pos);
+    }
+    else if (strcmp(name_buff, "LAYR") == 0)
+    {
+        return read_voxel_chunk_layr(file, result, pos);
+    }
+    else if (strcmp(name_buff, "MATL") == 0)
+    {
+        return read_voxel_chunk_matl(file, result, pos);
+    }
+    else if (strcmp(name_buff, "rOBJ") == 0)
+    {
+        return read_voxel_chunk_robj(file, result, pos);
+    }
 
     return false;
 }
 
-bool read_voxel(const char *path, VoxelData &result)
+bool read_voxel(const char *path, VoxelMesh &result)
 {
     FILE *file = fopen(path, "rb");
     fseek(file, 0, SEEK_END);
@@ -431,6 +624,8 @@ bool read_voxel(const char *path, VoxelData &result)
         goto read_voxel_end;
     }
 
+    result.current_mesh = new VoxelData();
+
     while (pos < file_length)
     {
         if (!read_voxel_chunk(file, result, pos))
@@ -438,6 +633,12 @@ bool read_voxel(const char *path, VoxelData &result)
             fprintf(stderr, "Failed to load voxel file '%s': invalid chunk\n", path);
             goto read_voxel_end;
         }
+    }
+
+    if (result.current_mesh != nullptr)
+    {
+        result.sub_meshes.push_back(*result.current_mesh);
+        result.current_mesh = new VoxelData();
     }
 
     printf("Read voxel file '%s'\n", path);
@@ -448,9 +649,15 @@ read_voxel_end:
     return true;
 }
 
-void delete_voxel(VoxelData &data)
+void delete_voxel(VoxelMesh &data)
 {
-    delete[] data.voxels;
+    for (int i = 0; i < data.sub_meshes.size(); i++)
+    {
+        delete[] data.sub_meshes[i].voxels;
+        delete &data.sub_meshes[i];
+    }
+
+    data.sub_meshes.clear();
 }
 /* #endregion */
 
@@ -565,7 +772,6 @@ unsigned int load_texture(const char *path)
     if (!data)
     {
         fprintf(stderr, "Failed to load texture: %s\n", path);
-        stbi_image_free(data);
         return -1;
     }
 
@@ -969,6 +1175,9 @@ EXPORT_METHOD bool init(void *shared_data_location)
 
     read_voxel("res/models/monu9.vox", game_state.voxel);
 
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
+
     return true;
 }
 
@@ -1125,19 +1334,27 @@ EXPORT_METHOD void render()
         glBindVertexArray(game_state.cube_vao);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
 
-        for (int i = 0; i < game_state.voxel.voxel_count; i++)
+        for (int j = 0; j < static_cast<int>(game_state.voxel.sub_meshes.size()); j++)
         {
-            Voxel voxel = game_state.voxel.voxels[i];
+            VoxelData data = game_state.voxel.sub_meshes[j];
 
-            glm::mat4 trans = glm::mat4(1.0f);
-            trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
-            trans = glm::scale(trans, glm::vec3(1/32.0f));
+            if (data.voxel_count == -1)
+                continue;
 
-            glUniformMatrix4fv(game_state.voxel_transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
+            for (int i = 0; i < data.voxel_count; i++)
+            {
+                Voxel voxel = data.voxels[i];
 
-            VoxelColor color = game_state.voxel.colors[voxel.color_index];
-            glUniform4f(game_state.voxel_color_loc, color.r, color.g, color.b, color.a);
-            glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, 0);
+                glm::mat4 trans = glm::mat4(1.0f);
+                trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
+                trans = glm::scale(trans, glm::vec3(1 / 32.0f));
+
+                glUniformMatrix4fv(game_state.voxel_transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
+
+                VoxelColor color = game_state.voxel.colors[voxel.color_index];
+                glUniform4f(game_state.voxel_color_loc, color.r, color.g, color.b, color.a);
+                glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, 0);
+            }
         }
     }
 
