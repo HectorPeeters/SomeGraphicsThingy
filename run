@@ -1,3 +1,13 @@
-make
-echo "\nStarting...\n"
-./bin/Debug/Squirrel
+make -j12
+
+ret_val=$?
+
+if [ $ret_val -ne 0 ];
+then
+    echo "\nBuild failed..."
+else
+    echo "\nStarting...\n"
+    ./bin/Debug/Squirrel
+fi
+
+exit $ret_val

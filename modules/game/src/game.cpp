@@ -14,10 +14,13 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/string_cast.hpp>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+/* #region keys */
 /* The unknown key */
 #define KEY_UNKNOWN -1
 
@@ -146,10 +149,38 @@
 #define KEY_MENU 348
 
 #define KEY_LAST KEY_MENU
+/* #endregion */
 
 #define PI 3.141592653689
 
+#define VOXEL_DEBUG
+
 #define EXPORT_METHOD extern "C"
+
+/* #region structs */
+struct Voxel
+{
+    unsigned char x;
+    unsigned char y;
+    unsigned char z;
+    unsigned char color_index;
+};
+
+struct VoxelColor
+{
+    float r;
+    float g;
+    float b;
+    float a;
+};
+
+struct VoxelData
+{
+    unsigned int size_x, size_y, size_z;
+    unsigned int voxel_count;
+    Voxel *voxels;
+    VoxelColor colors[256];
+};
 
 struct GameState
 {
@@ -222,6 +253,19 @@ struct GameState
 
     float pitch = 0;
     float yaw = -90;
+
+    VoxelData voxel;
+
+    unsigned int voxel_shader;
+
+    unsigned int cube_vao;
+    unsigned int cube_vertices_vbo;
+    unsigned int cube_ibo;
+
+    unsigned int voxel_projection_loc;
+    unsigned int voxel_transform_loc;
+    unsigned int voxel_view_loc;
+    unsigned int voxel_color_loc;
 };
 
 struct SharedData
@@ -236,10 +280,12 @@ struct SharedData
 
     bool game_focussed = true;
 };
+/* #endregion */
 
 GameState game_state;
 SharedData *shared_data;
 
+/* #region voxel */
 bool read_voxel_header(FILE *file)
 {
     const unsigned char header[] = {0x56, 0x4F, 0x58, 0x20};
@@ -256,43 +302,159 @@ bool read_voxel_header(FILE *file)
     return success;
 }
 
-bool read_voxel_chunk(FILE *file)
+bool read_voxel_chunk_size(FILE *file, VoxelData &result, long &pos)
 {
-    printf("%lu\n", sizeof(GameState));
-    char name_buff[4];
+    fread(&result.size_x, 4, 1, file);
+    pos += 4;
+    fread(&result.size_y, 4, 1, file);
+    pos += 4;
+    fread(&result.size_z, 4, 1, file);
+    pos += 4;
 
-    fread(name_buff, 4, 1, file);
+#ifdef VOXEL_DEBUG
+    printf("\t%d %d %d\n", result.size_x, result.size_y, result.size_z);
+#endif
 
-    printf("%s\n", name_buff);
+    return true;
+}
 
-    if (strcmp(name_buff, "MAIN"))
+bool read_voxel_chunk_xyzi(FILE *file, VoxelData &result, long &pos)
+{
+    fread(&result.voxel_count, 4, 1, file);
+    pos += 4;
+
+#ifdef VOXEL_DEBUG
+    printf("\t%d\n", result.voxel_count);
+#endif
+
+    result.voxels = new Voxel[result.voxel_count];
+
+    for (int i = 0; i < result.voxel_count; i++)
     {
-        printf("MAIN CHUNK!");
+        fread(&result.voxels[i], 4, 1, file);
+        pos += 4;
+
+        result.voxels[i].color_index--;
+
+#ifdef VOXEL_DEBUG
+        printf("\t%d %d %d: %d\n", result.voxels[i].x, result.voxels[i].y, result.voxels[i].z, result.voxels[i].color_index);
+#endif
+    }
+
+    return true;
+}
+
+unsigned int switch_endian(unsigned int x)
+{
+	return (((x>>24) & 0x000000ff) | ((x>>8) & 0x0000ff00) | ((x<<8) & 0x00ff0000) | ((x<<24) & 0xff000000));
+}
+
+bool read_voxel_chunk_rgba(FILE *file, VoxelData &result, long &pos)
+{
+    for (int i = 0; i < 256; i++)
+    {
+        
+        unsigned int color;
+        fread(&color, 4, 1, file);
+        pos += 4;
+
+        color = switch_endian(color);
+
+        result.colors[i].r = ((color >> 8*3) & 0xFF) / 256.0f;
+        result.colors[i].g = ((color >> 8*2) & 0xFF) / 256.0f;
+        result.colors[i].b = ((color >> 8) & 0xFF) / 256.0f;
+        result.colors[i].a = ((color) & 0xFF) / 256.0f;
+
+
+#ifdef VOXEL_DEBUG
+        if (result.colors[i].r != result.colors[i].g)
+        {
+            printf("\t%x-> ", color);
+            printf("\t%f %f %f %f\n", result.colors[i].r, result.colors[i].g, result.colors[i].b, result.colors[i].a);
+        }
+#endif
+    }
+
+    return true;
+}
+
+bool read_voxel_chunk(FILE *file, VoxelData &result, long &pos)
+{
+    char name_buff[4];
+    fread(name_buff, 4, 1, file);
+    pos += 4;
+
+    int size;
+    fread(&size, 4, 1, file);
+    pos += 4;
+
+    int children_size;
+    fread(&children_size, 4, 1, file);
+    pos += 4;
+
+#ifdef VOXEL_DEBUG
+    printf("Chunk %s: %d %d\n", name_buff, size, children_size);
+#endif
+
+    if (strcmp(name_buff, "MAIN") == 0)
+    {
+        return true;
+    }
+    else if (strcmp(name_buff, "SIZE") == 0)
+    {
+        return read_voxel_chunk_size(file, result, pos);
+    }
+    else if (strcmp(name_buff, "XYZI") == 0)
+    {
+        return read_voxel_chunk_xyzi(file, result, pos);
+    }
+    else if (strcmp(name_buff, "RGBA") == 0)
+    {
+        return read_voxel_chunk_rgba(file, result, pos);
     }
 
     return false;
 }
 
-void read_voxel(const char *path)
+bool read_voxel(const char *path, VoxelData &result)
 {
     FILE *file = fopen(path, "rb");
     fseek(file, 0, SEEK_END);
     long file_length = ftell(file);
     rewind(file);
 
+    long pos = 8;
+
     if (!read_voxel_header(file))
     {
         fprintf(stderr, "Failed to load voxel file '%s': voxel header not present\n", path);
-        return;
+        goto read_voxel_end;
     }
 
-    while (read_voxel_chunk(file))
+    while (pos < file_length)
     {
+        if (!read_voxel_chunk(file, result, pos))
+        {
+            fprintf(stderr, "Failed to load voxel file '%s': invalid chunk\n", path);
+            goto read_voxel_end;
+        }
     }
 
+    printf("Read voxel file '%s'\n", path);
+
+read_voxel_end:
     fclose(file);
+
+    return true;
 }
 
+void delete_voxel(VoxelData &data)
+{
+    delete[] data.voxels;
+}
+/* #endregion */
+
+/* #region shader */
 unsigned int load_shader_program(const char *vertex_path, const char *fragment_path)
 {
     std::string vertex_code;
@@ -393,6 +555,7 @@ void delete_shader(int program_id)
     glDeleteProgram(program_id);
     printf("Destroyed shader %d\n", program_id);
 }
+/* #endregion */
 
 unsigned int load_texture(const char *path)
 {
@@ -499,7 +662,6 @@ void load_quad_mesh()
 
     glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(3);
-
     glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_bitangent_vbo);
     glBufferData(GL_ARRAY_BUFFER, sizeof(bitangents), bitangents, GL_STATIC_DRAW);
 
@@ -510,11 +672,11 @@ void load_quad_mesh()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-void delete_triangle_mesh()
+void delete_quad_mesh()
 {
     glDeleteVertexArrays(1, &game_state.mesh_vao);
     glDeleteBuffers(1, &game_state.mesh_vertex_vbo);
@@ -525,6 +687,55 @@ void delete_triangle_mesh()
     glDeleteBuffers(1, &game_state.mesh_ibo);
 }
 
+void load_cube_mesh()
+{
+    float vertices[] = {
+        -1.0, -1.0, 1.0,  //
+        1.0, -1.0, 1.0,   //
+        1.0, 1.0, 1.0,    //
+        -1.0, 1.0, 1.0,   //
+        -1.0, -1.0, -1.0, //
+        1.0, -1.0, -1.0,  //
+        1.0, 1.0, -1.0,   //
+        -1.0, 1.0, -1.0,  //
+    };
+
+    unsigned int indices[] = {
+        0, 1, 2, 2, 3, 0, //
+        1, 5, 6, 6, 2, 1, //
+        7, 6, 5, 5, 4, 7, //
+        4, 0, 3, 3, 7, 4, //
+        4, 5, 1, 1, 0, 4, //
+        3, 2, 6, 6, 7, 3, //
+    };
+
+    glGenVertexArrays(1, &game_state.cube_vao);
+    glGenBuffers(1, &game_state.cube_vertices_vbo);
+    glGenBuffers(1, &game_state.cube_ibo);
+
+    glBindVertexArray(game_state.cube_vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, game_state.cube_vertices_vbo);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void delete_cube_mesh()
+{
+    glDeleteVertexArrays(1, &game_state.cube_vao);
+    glDeleteBuffers(1, &game_state.cube_vertices_vbo);
+}
+
+/* #region fbo */
 void load_fbo_quad()
 {
     float vertices[] = {
@@ -628,7 +839,67 @@ unsigned int generate_fbo(unsigned int texture_id, unsigned int render_buffer_id
 
     return id;
 }
+/* #endregion */
 
+/* #region camera */
+void update_camera()
+{
+    const float camera_speed = 0.05f;
+    const float mouse_sensitivity = 0.05f;
+
+    if (game_state.last_mouse_x == -1 || game_state.last_mouse_x == -1)
+    {
+        game_state.last_mouse_x = shared_data->mouse_x;
+        game_state.last_mouse_y = shared_data->mouse_y;
+    }
+
+    double dx = shared_data->mouse_x - game_state.last_mouse_x;
+    double dy = game_state.last_mouse_y - shared_data->mouse_y;
+
+    game_state.last_mouse_x = shared_data->mouse_x;
+    game_state.last_mouse_y = shared_data->mouse_y;
+
+    if (shared_data->game_focussed)
+    {
+
+        if (shared_data->keys[KEY_W])
+            game_state.camera_pos += camera_speed * game_state.camera_front;
+        if (shared_data->keys[KEY_S])
+            game_state.camera_pos -= camera_speed * game_state.camera_front;
+
+        if (shared_data->keys[KEY_A])
+            game_state.camera_pos -= glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
+        if (shared_data->keys[KEY_D])
+            game_state.camera_pos += glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
+
+        if (shared_data->keys[KEY_SPACE])
+            game_state.camera_pos.y += camera_speed;
+        if (shared_data->keys[KEY_LEFT_SHIFT])
+            game_state.camera_pos.y -= camera_speed;
+
+        dx *= mouse_sensitivity;
+        dy *= mouse_sensitivity;
+
+        game_state.yaw += dx;
+        game_state.pitch += dy;
+
+        if (game_state.pitch > 89.0f)
+            game_state.pitch = 89.0f;
+        if (game_state.pitch < -89.0f)
+            game_state.pitch = -89.0f;
+
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(game_state.yaw)) * cos(glm::radians(game_state.pitch));
+        direction.y = sin(glm::radians(game_state.pitch));
+        direction.z = sin(glm::radians(game_state.yaw)) * cos(glm::radians(game_state.pitch));
+        game_state.camera_front = glm::normalize(direction);
+
+        game_state.view_matrix = glm::lookAt(game_state.camera_pos, game_state.camera_pos + game_state.camera_front, game_state.camera_up);
+    }
+}
+/* #endregion */
+
+/* #region export */
 EXPORT_METHOD bool init(void *shared_data_location)
 {
     // glEnable(GL_FRAMEBUFFER_SRGB);
@@ -648,13 +919,13 @@ EXPORT_METHOD bool init(void *shared_data_location)
     game_state.fbo = generate_fbo(game_state.fbo_texture, game_state.fbo_rbo);
     load_fbo_quad();
 
-    // glm::mat4 trans = glm::mat4(1.0f);
-    // trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    // trans = glm::rotate(trans, glm::radians(0.0f), glm::vec3(0.0, 0.0, 1.0));
-    // trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
+    glm::mat4 trans = glm::mat4(1.0f);
+    trans = glm::translate(trans, glm::vec3(0, 0, -2));
+    trans = glm::rotate(trans, glm::radians(0.0f), glm::vec3(0.0, 0.0, 1.0));
+    trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
 
-    game_state.transfom_loc = glGetUniformLocation(game_state.basic_shader, "u_transform");
     glUseProgram(game_state.basic_shader);
+    game_state.transfom_loc = glGetUniformLocation(game_state.basic_shader, "u_transform");
     // glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
 
     game_state.projection_loc = glGetUniformLocation(game_state.basic_shader, "u_projection");
@@ -675,17 +946,28 @@ EXPORT_METHOD bool init(void *shared_data_location)
 
     load_quad_mesh();
 
-    game_state.texture = load_texture("res/textures/2k/Tiles32_col.jpg");
-    game_state.normal_texture = load_texture("res/textures/2k/Tiles32_nrm.jpg");
-
     glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_texture"), 0);
     glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_normal_texture"), 1);
+
+    update_camera();
 
     glUseProgram(game_state.fbo_shader);
 
     game_state.exposure_loc = glGetUniformLocation(game_state.fbo_shader, "u_exposure");
 
-    read_voxel("res/models/monu9.vox");
+    game_state.voxel_shader = load_shader_program("res/shaders/voxel.vert", "res/shaders/voxel.frag");
+    if (game_state.voxel_shader == -1)
+        return false;
+
+    glUseProgram(game_state.voxel_shader);
+    game_state.voxel_projection_loc = glGetUniformLocation(game_state.voxel_shader, "u_projection");
+    game_state.voxel_transform_loc = glGetUniformLocation(game_state.voxel_shader, "u_transform");
+    game_state.voxel_view_loc = glGetUniformLocation(game_state.voxel_shader, "u_view");
+    game_state.voxel_color_loc = glGetUniformLocation(game_state.voxel_shader, "u_color");
+
+    load_cube_mesh();
+
+    read_voxel("res/models/monu9.vox", game_state.voxel);
 
     return true;
 }
@@ -695,14 +977,19 @@ EXPORT_METHOD void deinit()
     glDeleteRenderbuffers(1, &game_state.fbo_rbo);
     glDeleteFramebuffers(1, &game_state.fbo);
 
-    delete_triangle_mesh();
+    delete_quad_mesh();
     delete_fbo_quad();
 
     delete_shader(game_state.basic_shader);
     delete_shader(game_state.fbo_shader);
+    delete_shader(game_state.voxel_shader);
 
     glDeleteTextures(1, &game_state.texture);
     glDeleteTextures(1, &game_state.normal_texture);
+
+    delete_cube_mesh();
+
+    delete_voxel(game_state.voxel);
 }
 
 EXPORT_METHOD void imgui_draw()
@@ -770,63 +1057,7 @@ EXPORT_METHOD void resize(unsigned int width, unsigned int height)
     game_state.fbo = generate_fbo(game_state.fbo_texture, game_state.fbo_rbo);
 }
 
-float i = 0;
-
-void update_camera()
-{
-    const float camera_speed = 0.05f;
-    const float mouse_sensitivity = 0.05f;
-
-    if (game_state.last_mouse_x == -1 || game_state.last_mouse_x == -1)
-    {
-        game_state.last_mouse_x = shared_data->mouse_x;
-        game_state.last_mouse_y = shared_data->mouse_y;
-    }
-
-    double dx = shared_data->mouse_x - game_state.last_mouse_x;
-    double dy = game_state.last_mouse_y - shared_data->mouse_y;
-
-    game_state.last_mouse_x = shared_data->mouse_x;
-    game_state.last_mouse_y = shared_data->mouse_y;
-
-    if (shared_data->game_focussed)
-    {
-
-        if (shared_data->keys[KEY_W])
-            game_state.camera_pos += camera_speed * game_state.camera_front;
-        if (shared_data->keys[KEY_S])
-            game_state.camera_pos -= camera_speed * game_state.camera_front;
-
-        if (shared_data->keys[KEY_A])
-            game_state.camera_pos -= glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
-        if (shared_data->keys[KEY_D])
-            game_state.camera_pos += glm::normalize(glm::cross(game_state.camera_front, game_state.camera_up)) * camera_speed;
-
-        if (shared_data->keys[KEY_SPACE])
-            game_state.camera_pos.y += camera_speed;
-        if (shared_data->keys[KEY_LEFT_SHIFT])
-            game_state.camera_pos.y -= camera_speed;
-
-        dx *= mouse_sensitivity;
-        dy *= mouse_sensitivity;
-
-        game_state.yaw += dx;
-        game_state.pitch += dy;
-
-        if (game_state.pitch > 89.0f)
-            game_state.pitch = 89.0f;
-        if (game_state.pitch < -89.0f)
-            game_state.pitch = -89.0f;
-
-        glm::vec3 direction;
-        direction.x = cos(glm::radians(game_state.yaw)) * cos(glm::radians(game_state.pitch));
-        direction.y = sin(glm::radians(game_state.pitch));
-        direction.z = sin(glm::radians(game_state.yaw)) * cos(glm::radians(game_state.pitch));
-        game_state.camera_front = glm::normalize(direction);
-
-        game_state.view_matrix = glm::lookAt(game_state.camera_pos, game_state.camera_pos + game_state.camera_front, game_state.camera_up);
-    }
-}
+float counter = 0;
 
 EXPORT_METHOD void update(float delta)
 {
@@ -834,9 +1065,9 @@ EXPORT_METHOD void update(float delta)
     glUseProgram(game_state.basic_shader);
     glUniformMatrix4fv(game_state.projection_loc, 1, GL_FALSE, glm::value_ptr(proj));
 
-    game_state.light_position.y = sin(i) / 3.0f;
-    game_state.light_position.x = cos(i) / 3.0f;
-    i += delta;
+    game_state.light_position.y = sin(counter) / 3.0f;
+    game_state.light_position.x = cos(counter) / 3.0f;
+    counter += delta;
 
     update_camera();
 
@@ -863,6 +1094,13 @@ EXPORT_METHOD void update(float delta)
 
     glUseProgram(game_state.fbo_shader);
     glUniform1f(game_state.exposure_loc, game_state.exposure);
+
+    glUseProgram(game_state.voxel_shader);
+    trans = glm::mat4(1.0f);
+    glUniformMatrix4fv(game_state.voxel_transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
+    glUniform4f(game_state.voxel_color_loc, 1.0f, 1.0f, 1.0f, 1.0f);
+    glUniformMatrix4fv(game_state.voxel_view_loc, 1, GL_FALSE, glm::value_ptr(game_state.view_matrix));
+    glUniformMatrix4fv(game_state.voxel_projection_loc, 1, GL_FALSE, glm::value_ptr(proj));
 }
 
 EXPORT_METHOD void render()
@@ -880,7 +1118,27 @@ EXPORT_METHOD void render()
 
         glUseProgram(game_state.basic_shader);
         glBindVertexArray(game_state.mesh_vao);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        glUseProgram(game_state.voxel_shader);
+        glBindVertexArray(game_state.cube_vao);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
+
+        for (int i = 0; i < game_state.voxel.voxel_count; i++)
+        {
+            Voxel voxel = game_state.voxel.voxels[i];
+
+            glm::mat4 trans = glm::mat4(1.0f);
+            trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
+            trans = glm::scale(trans, glm::vec3(1/32.0f));
+
+            glUniformMatrix4fv(game_state.voxel_transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
+
+            VoxelColor color = game_state.voxel.colors[voxel.color_index];
+            glUniform4f(game_state.voxel_color_loc, color.r, color.g, color.b, color.a);
+            glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, 0);
+        }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -893,3 +1151,4 @@ EXPORT_METHOD void render()
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
 }
+/* #endregion */

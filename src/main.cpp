@@ -207,8 +207,8 @@ void check_library_reload()
     {
         close_library();
 
-        load_library();
-        // exit(0);
+        if (!load_library())
+            exit(0);
 
         engine_state.old_library_timestamp = date;
     }
@@ -221,10 +221,10 @@ void glfw_error_callback(int error, const char *description)
 
 void APIENTRY gl_debug_output(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
-    // if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
-    // return;
+    if (id == 131169 || id == 131185 || id == 131218 || id == 131204)
+        return;
 
-    if (severity <= GL_DEBUG_SEVERITY_LOW)
+    if (severity <= GL_DEBUG_SEVERITY_NOTIFICATION)
         return;
 
     log_error("-----------------------------------\n");
@@ -389,7 +389,7 @@ Window create_window()
         glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
     }
 
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);  
 
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetKeyCallback(window, key_callback);
