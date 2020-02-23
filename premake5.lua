@@ -5,7 +5,7 @@ workspace "Squirrel"
 
 
     filter "configurations:Debug"
-        defines { "DEBUG" }
+        defines { "DEBUG", "DEBUG_SHADER" }
         symbols "On"
 
     filter "configurations:Release"

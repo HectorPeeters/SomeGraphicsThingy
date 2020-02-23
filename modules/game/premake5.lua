@@ -4,11 +4,11 @@ project "Game"
     targetdir "../../bin/%{cfg.buildcfg}"
     objdir "../../obj/%{cfg.buildcfg}"
 
-    files { "src/**.h", "src/**.cpp" }
+    files { "include/**.h", "src/**.cpp" }
 
     pic "On"
 
-    includedirs { "../imgui", "../glad/include", "usr/include/glm", "usr/include/zlib.h" }
+    includedirs { "include/", "../imgui", "../glad/include", "usr/include/glm", "usr/include/zlib.h" }
 
     links { "z" }
     

@@ -4,7 +4,6 @@
 #include <sstream>
 #include <cmath>
 #include <vector>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,183 +17,23 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-/* #region keys */
-/* The unknown key */
-#define KEY_UNKNOWN -1
+#include "magica_voxel.h"
+#include "shader.h"
 
-/* Printable keys */
-#define KEY_SPACE 32
-#define KEY_APOSTROPHE 39 /* ' */
-#define KEY_COMMA 44      /* , */
-#define KEY_MINUS 45      /* - */
-#define KEY_PERIOD 46     /* . */
-#define KEY_SLASH 47      /* / */
-#define KEY_0 48
-#define KEY_1 49
-#define KEY_2 50
-#define KEY_3 51
-#define KEY_4 52
-#define KEY_5 53
-#define KEY_6 54
-#define KEY_7 55
-#define KEY_8 56
-#define KEY_9 57
-#define KEY_SEMICOLON 59 /* ; */
-#define KEY_EQUAL 61     /* = */
-#define KEY_A 65
-#define KEY_B 66
-#define KEY_C 67
-#define KEY_D 68
-#define KEY_E 69
-#define KEY_F 70
-#define KEY_G 71
-#define KEY_H 72
-#define KEY_I 73
-#define KEY_J 74
-#define KEY_K 75
-#define KEY_L 76
-#define KEY_M 77
-#define KEY_N 78
-#define KEY_O 79
-#define KEY_P 80
-#define KEY_Q 81
-#define KEY_R 82
-#define KEY_S 83
-#define KEY_T 84
-#define KEY_U 85
-#define KEY_V 86
-#define KEY_W 87
-#define KEY_X 88
-#define KEY_Y 89
-#define KEY_Z 90
-#define KEY_LEFT_BRACKET 91  /* [ */
-#define KEY_BACKSLASH 92     /* \ */
-#define KEY_RIGHT_BRACKET 93 /* ] */
-#define KEY_GRAVE_ACCENT 96  /* ` */
-#define KEY_WORLD_1 161      /* non-US #1 */
-#define KEY_WORLD_2 162      /* non-US #2 */
+#include "keys.h"
 
-/* Function keys */
-#define KEY_ESCAPE 256
-#define KEY_ENTER 257
-#define KEY_TAB 258
-#define KEY_BACKSPACE 259
-#define KEY_INSERT 260
-#define KEY_DELETE 261
-#define KEY_RIGHT 262
-#define KEY_LEFT 263
-#define KEY_DOWN 264
-#define KEY_UP 265
-#define KEY_PAGE_UP 266
-#define KEY_PAGE_DOWN 267
-#define KEY_HOME 268
-#define KEY_END 269
-#define KEY_CAPS_LOCK 280
-#define KEY_SCROLL_LOCK 281
-#define KEY_NUM_LOCK 282
-#define KEY_PRINT_SCREEN 283
-#define KEY_PAUSE 284
-#define KEY_F1 290
-#define KEY_F2 291
-#define KEY_F3 292
-#define KEY_F4 293
-#define KEY_F5 294
-#define KEY_F6 295
-#define KEY_F7 296
-#define KEY_F8 297
-#define KEY_F9 298
-#define KEY_F10 299
-#define KEY_F11 300
-#define KEY_F12 301
-#define KEY_F13 302
-#define KEY_F14 303
-#define KEY_F15 304
-#define KEY_F16 305
-#define KEY_F17 306
-#define KEY_F18 307
-#define KEY_F19 308
-#define KEY_F20 309
-#define KEY_F21 310
-#define KEY_F22 311
-#define KEY_F23 312
-#define KEY_F24 313
-#define KEY_F25 314
-#define KEY_KP_0 320
-#define KEY_KP_1 321
-#define KEY_KP_2 322
-#define KEY_KP_3 323
-#define KEY_KP_4 324
-#define KEY_KP_5 325
-#define KEY_KP_6 326
-#define KEY_KP_7 327
-#define KEY_KP_8 328
-#define KEY_KP_9 329
-#define KEY_KP_DECIMAL 330
-#define KEY_KP_DIVIDE 331
-#define KEY_KP_MULTIPLY 332
-#define KEY_KP_SUBTRACT 333
-#define KEY_KP_ADD 334
-#define KEY_KP_ENTER 335
-#define KEY_KP_EQUAL 336
-#define KEY_LEFT_SHIFT 340
-#define KEY_LEFT_CONTROL 341
-#define KEY_LEFT_ALT 342
-#define KEY_LEFT_SUPER 343
-#define KEY_RIGHT_SHIFT 344
-#define KEY_RIGHT_CONTROL 345
-#define KEY_RIGHT_ALT 346
-#define KEY_RIGHT_SUPER 347
-#define KEY_MENU 348
-
-#define KEY_LAST KEY_MENU
-/* #endregion */
+// #include "raytrace.cpp"
 
 #define PI 3.141592653689
-
-// #define VOXEL_DEBUG
 
 #define EXPORT_METHOD extern "C"
 
 /* #region structs */
-struct Voxel
-{
-    unsigned char x;
-    unsigned char y;
-    unsigned char z;
-    unsigned char color_index;
-};
-
-struct VoxelColor
-{
-    float r;
-    float g;
-    float b;
-    float a;
-};
-
-struct VoxelData
-{
-    unsigned int size_x, size_y, size_z;
-    unsigned int voxel_count = -1;
-    Voxel *voxels;
-};
-
-struct VoxelMesh
-{
-    std::vector<VoxelData> sub_meshes;
-    VoxelData *current_mesh;
-    VoxelColor colors[256];
-};
-
 struct GameState
 {
-    unsigned int basic_shader;
-    unsigned int uniform_count;
-    unsigned int attribute_count;
-    char uniform_names[64][64];
-    char attribute_names[64][64];
+    Shader basic_shader;
 
-    unsigned int fbo_shader;
+    Shader fbo_shader;
     unsigned int fbo;
     unsigned int fbo_rbo;
     unsigned int fbo_texture;
@@ -205,23 +44,6 @@ struct GameState
 
     glm::mat4 view_matrix;
 
-    unsigned int transfom_loc;
-    unsigned int projection_loc;
-    unsigned int view_loc;
-
-    unsigned int camera_pos_loc;
-
-    unsigned int light_pos_loc;
-    unsigned int light_ambient_loc;
-    unsigned int light_diffuse_loc;
-    unsigned int light_specular_loc;
-
-    unsigned int material_ambient_loc;
-    unsigned int material_diffuse_loc;
-    unsigned int material_specular_loc;
-    unsigned int material_shininess_loc;
-
-    unsigned int exposure_loc;
     float exposure = 1.0;
 
     unsigned int mesh_vertex_vbo;
@@ -260,18 +82,11 @@ struct GameState
 
     VoxelMesh voxel;
 
-    unsigned int voxel_shader;
+    Shader voxel_shader;
 
     unsigned int cube_vao;
     unsigned int cube_vertices_vbo;
     unsigned int cube_ibo;
-
-    unsigned int voxel_projection_loc;
-    unsigned int voxel_transform_loc;
-    unsigned int voxel_view_loc;
-    unsigned int voxel_color_loc;
-
-    int submesh_count;
 };
 
 struct SharedData
@@ -290,479 +105,6 @@ struct SharedData
 
 GameState game_state;
 SharedData *shared_data;
-
-/* #region voxel */
-bool read_voxel_header(FILE *file)
-{
-    const unsigned char header[] = {0x56, 0x4F, 0x58, 0x20};
-    unsigned char *buff = (unsigned char *)malloc(4 * sizeof(char));
-
-    fread(buff, 4, 1, file);
-
-    bool success = memcmp(buff, header, 4) == 0;
-
-    fread(buff, 4, 1, file);
-
-    free(buff);
-
-    return success;
-}
-
-bool read_voxel_chunk_size(FILE *file, VoxelMesh &result, long &pos)
-{
-    if (result.current_mesh != nullptr)
-    {
-        result.sub_meshes.push_back(*result.current_mesh);
-        result.current_mesh = new VoxelData();
-    }
-
-    fread(&result.current_mesh->size_x, 4, 1, file);
-    pos += 4;
-    fread(&result.current_mesh->size_y, 4, 1, file);
-    pos += 4;
-    fread(&result.current_mesh->size_z, 4, 1, file);
-    pos += 4;
-
-#ifdef VOXEL_DEBUG
-    printf("\t%d %d %d\n", result.size_x, result.size_y, result.size_z);
-#endif
-
-    return true;
-}
-
-bool read_voxel_chunk_xyzi(FILE *file, VoxelMesh &result, long &pos)
-{
-    fread(&result.current_mesh->voxel_count, 4, 1, file);
-    pos += 4;
-
-#ifdef VOXEL_DEBUG
-    printf("\t%d\n", result.voxel_count);
-#endif
-
-    result.current_mesh->voxels = new Voxel[result.current_mesh->voxel_count];
-
-    for (int i = 0; i < result.current_mesh->voxel_count; i++)
-    {
-        fread(&result.current_mesh->voxels[i], 4, 1, file);
-        pos += 4;
-
-        result.current_mesh->voxels[i].color_index--;
-
-#ifdef VOXEL_DEBUG
-        printf("\t%d %d %d: %d\n", result.voxels[i].x, result.voxels[i].y, result.voxels[i].z, result.voxels[i].color_index);
-#endif
-    }
-
-    return true;
-}
-
-unsigned int switch_endian(unsigned int x)
-{
-    return (((x >> 24) & 0x000000ff) | ((x >> 8) & 0x0000ff00) | ((x << 8) & 0x00ff0000) | ((x << 24) & 0xff000000));
-}
-
-bool read_voxel_chunk_rgba(FILE *file, VoxelMesh &result, long &pos)
-{
-    for (int i = 0; i < 256; i++)
-    {
-
-        unsigned int color;
-        fread(&color, 4, 1, file);
-        pos += 4;
-
-        color = switch_endian(color);
-
-        result.colors[i].r = ((color >> 8 * 3) & 0xFF) / 256.0f;
-        result.colors[i].g = ((color >> 8 * 2) & 0xFF) / 256.0f;
-        result.colors[i].b = ((color >> 8) & 0xFF) / 256.0f;
-        result.colors[i].a = ((color)&0xFF) / 256.0f;
-
-#ifdef VOXEL_DEBUG
-        if (result.colors[i].r != result.colors[i].g)
-        {
-            printf("\t%x-> ", color);
-            printf("\t%f %f %f %f\n", result.colors[i].r, result.colors[i].g, result.colors[i].b, result.colors[i].a);
-        }
-#endif
-    }
-
-    return true;
-}
-
-const char *read_voxel_chunk_string(FILE *file, long &pos)
-{
-    int length;
-    fread(&length, 4, 1, file);
-    pos += 4;
-
-    const char *result = new char[length];
-
-    for (int i = 0; i < length; i++)
-    {
-        fread((void *)&result[i], 1, 1, file);
-        pos++;
-    }
-
-    printf("\tString: %s\n", result);
-
-    delete[] result;
-
-    return result;
-}
-
-bool read_voxel_chunk_dict(FILE *file, long &pos)
-{
-    unsigned int n;
-    fread(&n, 4, 1, file);
-    pos += 4;
-
-    printf("Dict length: %d\n", n);
-
-    for (int i = 0; i < n; i++)
-    {
-        read_voxel_chunk_string(file, pos);
-        read_voxel_chunk_string(file, pos);
-    }
-
-    return true;
-}
-
-bool read_voxel_chunk_ntrn(FILE *file, VoxelMesh &result, long &pos)
-{
-    int node_id;
-    fread(&node_id, 4, 1, file);
-    pos += 4;
-
-    read_voxel_chunk_dict(file, pos);
-
-    int child_id;
-    fread(&child_id, 4, 1, file);
-    pos += 4;
-
-    int reserved_id;
-    fread(&reserved_id, 4, 1, file);
-    pos += 4;
-
-    if (reserved_id != -1)
-        return false;
-
-    int layer_id;
-    fread(&layer_id, 4, 1, file);
-    pos += 4;
-
-    int num_frames;
-    fread(&num_frames, 4, 1, file);
-    pos += 4;
-
-    if (num_frames != 1)
-        return false;
-
-    read_voxel_chunk_dict(file, pos);
-
-    return true;
-}
-
-bool read_voxel_chunk_ngrp(FILE *file, VoxelMesh &result, long &pos)
-{
-    int node_id;
-    fread(&node_id, 4, 1, file);
-    pos += 4;
-
-    read_voxel_chunk_dict(file, pos);
-
-    int n;
-    fread(&n, 4, 1, file);
-    pos += 4;
-
-    for (int i = 0; i < n; i++)
-    {
-        int child_id;
-        fread(&child_id, 4, 1, file);
-        pos += 4;
-    }
-
-    return true;
-}
-
-bool read_voxel_chunk_nshp(FILE *file, VoxelMesh &result, long &pos)
-{
-    int node_id;
-    fread(&node_id, 4, 1, file);
-    pos += 4;
-
-    read_voxel_chunk_dict(file, pos);
-
-    int num_models;
-    fread(&num_models, 4, 1, file);
-    pos += 4;
-
-    if (num_models != 1)
-        return false;
-
-    for (int i = 0; i < num_models; i++)
-    {
-        int child_id;
-        fread(&child_id, 4, 1, file);
-        pos += 4;
-
-        read_voxel_chunk_dict(file, pos);
-    }
-
-    return true;
-}
-
-bool read_voxel_chunk_layr(FILE *file, VoxelMesh &result, long &pos)
-{
-    int layer_id;
-    fread(&layer_id, 4, 1, file);
-    pos += 4;
-
-    read_voxel_chunk_dict(file, pos);
-
-    int reserved_id;
-    fread(&reserved_id, 4, 1, file);
-    pos += 4;
-
-    if (reserved_id != -1)
-        return false;
-
-    return true;
-}
-
-bool read_voxel_chunk_matl(FILE *file, VoxelMesh &result, long &pos)
-{
-    int mat_id;
-    fread(&mat_id, 4, 1, file);
-    pos += 4;
-
-    read_voxel_chunk_dict(file, pos);
-
-    return true;
-}
-
-bool read_voxel_chunk_robj(FILE *file, VoxelMesh &result, long &pos)
-{
-    read_voxel_chunk_dict(file, pos);
-
-    return true;
-}
-
-bool read_voxel_chunk(FILE *file, VoxelMesh &result, long &pos)
-{
-    char name_buff[4];
-    fread(name_buff, 4, 1, file);
-    pos += 4;
-
-    int size;
-    fread(&size, 4, 1, file);
-    pos += 4;
-
-    int children_size;
-    fread(&children_size, 4, 1, file);
-    pos += 4;
-
-    // #ifdef VOXEL_DEBUG
-    printf("Chunk %s: %d %d\n", name_buff, size, children_size);
-    // #endif
-
-    if (strcmp(name_buff, "MAIN") == 0)
-    {
-        return true;
-    }
-    else if (strcmp(name_buff, "SIZE") == 0)
-    {
-        return read_voxel_chunk_size(file, result, pos);
-    }
-    else if (strcmp(name_buff, "XYZI") == 0)
-    {
-        return read_voxel_chunk_xyzi(file, result, pos);
-    }
-    else if (strcmp(name_buff, "RGBA") == 0)
-    {
-        return read_voxel_chunk_rgba(file, result, pos);
-    }
-    else if (strcmp(name_buff, "nTRN") == 0)
-    {
-        return read_voxel_chunk_ntrn(file, result, pos);
-    }
-    else if (strcmp(name_buff, "nGRP") == 0)
-    {
-        return read_voxel_chunk_ngrp(file, result, pos);
-    }
-    else if (strcmp(name_buff, "nSHP") == 0)
-    {
-        return read_voxel_chunk_nshp(file, result, pos);
-    }
-    else if (strcmp(name_buff, "LAYR") == 0)
-    {
-        return read_voxel_chunk_layr(file, result, pos);
-    }
-    else if (strcmp(name_buff, "MATL") == 0)
-    {
-        return read_voxel_chunk_matl(file, result, pos);
-    }
-    else if (strcmp(name_buff, "rOBJ") == 0)
-    {
-        return read_voxel_chunk_robj(file, result, pos);
-    }
-
-    return false;
-}
-
-bool read_voxel(const char *path, VoxelMesh &result)
-{
-    FILE *file = fopen(path, "rb");
-    fseek(file, 0, SEEK_END);
-    long file_length = ftell(file);
-    rewind(file);
-
-    long pos = 8;
-
-    if (!read_voxel_header(file))
-    {
-        fprintf(stderr, "Failed to load voxel file '%s': voxel header not present\n", path);
-        goto read_voxel_end;
-    }
-
-    result.current_mesh = new VoxelData();
-
-    while (pos < file_length)
-    {
-        if (!read_voxel_chunk(file, result, pos))
-        {
-            fprintf(stderr, "Failed to load voxel file '%s': invalid chunk\n", path);
-            goto read_voxel_end;
-        }
-    }
-
-    if (result.current_mesh != nullptr)
-    {
-        result.sub_meshes.push_back(*result.current_mesh);
-        result.current_mesh = new VoxelData();
-    }
-
-    printf("Read voxel file '%s'\n", path);
-
-read_voxel_end:
-    fclose(file);
-
-    return true;
-}
-
-void delete_voxel(VoxelMesh &data)
-{
-    for (int i = 0; i < data.sub_meshes.size(); i++)
-    {
-        delete[] data.sub_meshes[i].voxels;
-        delete &data.sub_meshes[i];
-    }
-
-    data.sub_meshes.clear();
-}
-/* #endregion */
-
-/* #region shader */
-unsigned int load_shader_program(const char *vertex_path, const char *fragment_path)
-{
-    std::string vertex_code;
-    std::string fragment_code;
-    std::ifstream vertex_stream;
-    std::ifstream fragment_stream;
-
-    vertex_stream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-    fragment_stream.exceptions(std::ifstream::failbit | std::ifstream::badbit);
-
-    try
-    {
-        vertex_stream.open(vertex_path);
-        fragment_stream.open(fragment_path);
-        std::stringstream vertex_string_stream, fragment_string_stream;
-
-        vertex_string_stream << vertex_stream.rdbuf();
-        fragment_string_stream << fragment_stream.rdbuf();
-
-        vertex_stream.close();
-        fragment_stream.close();
-
-        vertex_code = vertex_string_stream.str();
-        fragment_code = fragment_string_stream.str();
-    }
-    catch (std::ifstream::failure e)
-    {
-        fprintf(stderr, "Shader Error: Failed to load shader %s and %s\n", vertex_path, fragment_path);
-        return -1;
-    }
-
-    unsigned int vertex_id, fragment_id;
-    int success;
-    char info_log[512];
-
-    const char *vertex_code_c = vertex_code.c_str();
-    const char *fragment_code_c = fragment_code.c_str();
-
-    vertex_id = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_id, 1, &vertex_code_c, NULL);
-    glCompileShader(vertex_id);
-
-    glGetShaderiv(vertex_id, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(vertex_id, 512, NULL, info_log);
-        fprintf(stderr, "Shader Error: Failed to compile vertex shader:\n%s\n", info_log);
-        return -1;
-    }
-
-    fragment_id = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_id, 1, &fragment_code_c, NULL);
-    glCompileShader(fragment_id);
-
-    glGetShaderiv(fragment_id, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(fragment_id, 512, NULL, info_log);
-        fprintf(stderr, "Shader Error: Failed to compile fragment shader:\n%s\n", info_log);
-        return -1;
-    }
-
-    unsigned int program_id = glCreateProgram();
-    glAttachShader(program_id, vertex_id);
-    glAttachShader(program_id, fragment_id);
-    glLinkProgram(program_id);
-
-    glGetProgramiv(program_id, GL_LINK_STATUS, &success);
-    if (!success)
-    {
-        glGetProgramInfoLog(program_id, 512, NULL, info_log);
-        fprintf(stderr, "Shader Error: Failed to link shader program %s, %s: %s\n", vertex_path, fragment_path, info_log);
-        return -1;
-    }
-
-    glDeleteShader(vertex_id);
-    glDeleteShader(fragment_id);
-
-    // glGetProgramiv(program_id, GL_ACTIVE_UNIFORMS, &game_state.uniform_count);
-    // glGetProgramiv(program_id, GL_ACTIVE_ATTRIBUTES, &game_state.attribute_count);
-
-    // int length, size;
-    // GLenum type;
-    // for (int i = 0; i < game_state.uniform_count; i++)
-    //     glGetActiveUniform(program_id, (GLuint)i, 64, &length, &size, &type, game_state.uniform_names[i]);
-
-    // for (int i = 0; i < game_state.attribute_count; i++)
-    //     glGetActiveAttrib(program_id, (GLuint)i, 64, &length, &size, &type, game_state.attribute_names[i]);
-
-    printf("Loaded shader (%d) %s, %s\n", program_id, vertex_path, fragment_path);
-
-    return program_id;
-}
-
-void delete_shader(int program_id)
-{
-    glUseProgram(0);
-    glDeleteProgram(program_id);
-    printf("Destroyed shader %d\n", program_id);
-}
-/* #endregion */
 
 unsigned int load_texture(const char *path)
 {
@@ -1112,12 +454,10 @@ EXPORT_METHOD bool init(void *shared_data_location)
 
     shared_data = (SharedData *)shared_data_location;
 
-    game_state.basic_shader = load_shader_program("res/shaders/basic.vert", "res/shaders/basic.frag");
-    if (game_state.basic_shader == -1)
+    if (!load_shader_program("res/shaders/basic.vert", "res/shaders/basic.frag", game_state.basic_shader))
         return false;
 
-    game_state.fbo_shader = load_shader_program("res/shaders/fbo.vert", "res/shaders/fbo.frag");
-    if (game_state.fbo_shader == -1)
+    if (!load_shader_program("res/shaders/fbo.vert", "res/shaders/fbo.frag", game_state.fbo_shader))
         return false;
 
     game_state.fbo_texture = generate_texture(shared_data->width, shared_data->height);
@@ -1130,46 +470,23 @@ EXPORT_METHOD bool init(void *shared_data_location)
     trans = glm::rotate(trans, glm::radians(0.0f), glm::vec3(0.0, 0.0, 1.0));
     trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
 
-    glUseProgram(game_state.basic_shader);
-    game_state.transfom_loc = glGetUniformLocation(game_state.basic_shader, "u_transform");
-    // glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
-
-    game_state.projection_loc = glGetUniformLocation(game_state.basic_shader, "u_projection");
-    game_state.view_loc = glGetUniformLocation(game_state.basic_shader, "u_view");
-    game_state.camera_pos_loc = glGetUniformLocation(game_state.basic_shader, "u_cameraPos");
-
-    game_state.light_pos_loc = glGetUniformLocation(game_state.basic_shader, "u_light.position");
-    game_state.light_ambient_loc = glGetUniformLocation(game_state.basic_shader, "u_light.ambient");
-    game_state.light_diffuse_loc = glGetUniformLocation(game_state.basic_shader, "u_light.diffuse");
-    game_state.light_specular_loc = glGetUniformLocation(game_state.basic_shader, "u_light.specular");
-
-    game_state.material_ambient_loc = glGetUniformLocation(game_state.basic_shader, "u_material.ambient");
-    game_state.material_diffuse_loc = glGetUniformLocation(game_state.basic_shader, "u_material.diffuse");
-    game_state.material_specular_loc = glGetUniformLocation(game_state.basic_shader, "u_material.specular");
-    game_state.material_shininess_loc = glGetUniformLocation(game_state.basic_shader, "u_material.shininess");
+    bind_shader(game_state.basic_shader);
 
     game_state.light_position.z = -1.95f;
 
     load_quad_mesh();
 
-    glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_texture"), 0);
-    glUniform1i(glGetUniformLocation(game_state.basic_shader, "u_normal_texture"), 1);
+    uniform_1i("u_texture", 0);
+    uniform_1i("u_normal_texture", 1);
 
     update_camera();
 
-    glUseProgram(game_state.fbo_shader);
+    bind_shader(game_state.fbo_shader);
 
-    game_state.exposure_loc = glGetUniformLocation(game_state.fbo_shader, "u_exposure");
-
-    game_state.voxel_shader = load_shader_program("res/shaders/voxel.vert", "res/shaders/voxel.frag");
-    if (game_state.voxel_shader == -1)
+    if (!load_shader_program("res/shaders/voxel.vert", "res/shaders/voxel.frag", game_state.voxel_shader))
         return false;
 
-    glUseProgram(game_state.voxel_shader);
-    game_state.voxel_projection_loc = glGetUniformLocation(game_state.voxel_shader, "u_projection");
-    game_state.voxel_transform_loc = glGetUniformLocation(game_state.voxel_shader, "u_transform");
-    game_state.voxel_view_loc = glGetUniformLocation(game_state.voxel_shader, "u_view");
-    game_state.voxel_color_loc = glGetUniformLocation(game_state.voxel_shader, "u_color");
+    bind_shader(game_state.voxel_shader);
 
     load_cube_mesh();
 
@@ -1192,7 +509,6 @@ EXPORT_METHOD void deinit()
     delete_shader(game_state.basic_shader);
     delete_shader(game_state.fbo_shader);
     delete_shader(game_state.voxel_shader);
-
     glDeleteTextures(1, &game_state.texture);
     glDeleteTextures(1, &game_state.normal_texture);
 
@@ -1205,21 +521,23 @@ EXPORT_METHOD void imgui_draw()
 {
     ImGui::Begin("Shader Viewer");
 
-    ImGui::Text("Id: %d", game_state.basic_shader);
-    ImGui::Text("Uniforms: %d", game_state.uniform_count);
-    ImGui::Text("Attributes: %d", game_state.attribute_count);
+    ImGui::Text("Id: %d", game_state.basic_shader.id);
+    ImGui::Text("Uniforms: %lu", game_state.basic_shader.uniforms.size());
+    // ImGui::Text("Attributes: %d", game_state.attribute_count);
 
     if (ImGui::CollapsingHeader("Uniforms"))
     {
-        for (int i = 0; i < game_state.uniform_count; i++)
-            ImGui::Text("%s\n", game_state.uniform_names[i]);
+        for (auto pair : game_state.basic_shader.uniforms)
+        {
+            ImGui::Text("%s: %d", pair.first.c_str(), pair.second);
+        }
     }
 
-    if (ImGui::CollapsingHeader("Attributes"))
-    {
-        for (int i = 0; i < game_state.attribute_count; i++)
-            ImGui::Text("%s\n", game_state.attribute_names[i]);
-    }
+    // if (ImGui::CollapsingHeader("Attributes"))
+    // {
+    //     for (int i = 0; i < game_state.attribute_count; i++)
+    //         ImGui::Text("%s\n", game_state.attribute_names[i]);
+    // }
 
     ImGui::End();
 
@@ -1271,8 +589,8 @@ float counter = 0;
 EXPORT_METHOD void update(float delta)
 {
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)shared_data->width / (float)shared_data->height, 0.1f, 1000.0f);
-    glUseProgram(game_state.basic_shader);
-    glUniformMatrix4fv(game_state.projection_loc, 1, GL_FALSE, glm::value_ptr(proj));
+    // bind_shader(game_state.basic_shader);
+    // uniform_mat4("u_projection", proj);
 
     game_state.light_position.y = sin(counter) / 3.0f;
     game_state.light_position.x = cos(counter) / 3.0f;
@@ -1280,57 +598,54 @@ EXPORT_METHOD void update(float delta)
 
     update_camera();
 
-    glUseProgram(game_state.basic_shader);
-    glUniform3f(game_state.light_pos_loc, game_state.light_position.x, game_state.light_position.y, game_state.light_position.z);
-    glUniform3f(game_state.light_ambient_loc, game_state.light_ambient.x, game_state.light_ambient.y, game_state.light_ambient.z);
-    glUniform3f(game_state.light_diffuse_loc, game_state.light_diffuse.x, game_state.light_diffuse.y, game_state.light_diffuse.z);
-    glUniform3f(game_state.light_specular_loc, game_state.light_specular.x, game_state.light_specular.y, game_state.light_specular.z);
+    // bind_shader(game_state.basic_shader);
+    // uniform_3f("u_light_pos", game_state.light_position);
+    // uniform_3f("u_light_ambient", game_state.light_ambient);
+    // uniform_3f("u_light_diffuse", game_state.light_diffuse);
+    // uniform_3f("u_light_specular", game_state.light_specular);
 
-    glUniform3f(game_state.material_ambient_loc, game_state.material_ambient.x, game_state.material_ambient.y, game_state.material_ambient.z);
-    glUniform3f(game_state.material_diffuse_loc, game_state.material_diffuse.x, game_state.material_diffuse.y, game_state.material_diffuse.z);
-    glUniform3f(game_state.material_specular_loc, game_state.material_specular.x, game_state.material_specular.y, game_state.material_specular.z);
-    glUniform1i(game_state.material_shininess_loc, game_state.material_shininess);
+    // uniform_3f("u_ambient", game_state.material_ambient);
+    // uniform_3f("u_diffuse", game_state.material_diffuse);
+    // uniform_3f("u_specular", game_state.material_specular);
+    // uniform_1i("u_shininess", game_state.material_shininess);
 
-    glUniform3f(game_state.camera_pos_loc, 0, 0, 0);
+    // uniform_3f("u_cameraPos", game_state.camera_pos);
 
-    glUniformMatrix4fv(game_state.view_loc, 1, GL_FALSE, glm::value_ptr(game_state.view_matrix));
+    // uniform_mat4("u_view", game_state.view_matrix);
 
-    glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    // trans = glm::rotate(trans, glm::radians(-90.0f), glm::vec3(0.0, 1.0, 0.0));
-    trans = glm::scale(trans, glm::vec3(game_state.model_scale));
-    glUniformMatrix4fv(game_state.transfom_loc, 1, GL_FALSE, glm::value_ptr(trans));
+    // glm::mat4 trans = glm::mat4(1.0f);
+    // trans = glm::translate(trans, glm::vec3(0, 0, -2));
+    // // trans = glm::rotate(trans, glm::radians(-90.0f), glm::vec3(0.0, 1.0, 0.0));
+    // trans = glm::scale(trans, glm::vec3(game_state.model_scale));
+    // uniform_mat4("u_transform", trans);
 
-    glUseProgram(game_state.fbo_shader);
-    glUniform1f(game_state.exposure_loc, game_state.exposure);
+    bind_shader(game_state.fbo_shader);
+    uniform_1f("u_exposure", game_state.exposure);
 
-    glUseProgram(game_state.voxel_shader);
-    trans = glm::mat4(1.0f);
-    glUniformMatrix4fv(game_state.voxel_transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
-    glUniform4f(game_state.voxel_color_loc, 1.0f, 1.0f, 1.0f, 1.0f);
-    glUniformMatrix4fv(game_state.voxel_view_loc, 1, GL_FALSE, glm::value_ptr(game_state.view_matrix));
-    glUniformMatrix4fv(game_state.voxel_projection_loc, 1, GL_FALSE, glm::value_ptr(proj));
+    bind_shader(game_state.voxel_shader);
+    uniform_mat4("u_view", game_state.view_matrix);
+    uniform_mat4("u_projection", proj);
 }
 
 EXPORT_METHOD void render()
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
+    // glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
     {
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, game_state.texture);
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, game_state.normal_texture);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindTexture(GL_TEXTURE_2D, game_state.texture);
+        // glActiveTexture(GL_TEXTURE1);
+        // glBindTexture(GL_TEXTURE_2D, game_state.normal_texture);
 
-        glUseProgram(game_state.basic_shader);
-        glBindVertexArray(game_state.mesh_vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // bind_shader(game_state.basic_shader);
+        // glBindVertexArray(game_state.mesh_vao);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
+        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        glUseProgram(game_state.voxel_shader);
+        bind_shader(game_state.voxel_shader);
         glBindVertexArray(game_state.cube_vao);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
 
@@ -1349,23 +664,22 @@ EXPORT_METHOD void render()
                 trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
                 trans = glm::scale(trans, glm::vec3(1 / 32.0f));
 
-                glUniformMatrix4fv(game_state.voxel_transform_loc, 1, GL_FALSE, glm::value_ptr(trans));
+                uniform_mat4("u_transform", trans);
 
-                VoxelColor color = game_state.voxel.colors[voxel.color_index];
-                glUniform4f(game_state.voxel_color_loc, color.r, color.g, color.b, color.a);
+                uniform_4f("u_color", game_state.voxel.colors[voxel.color_index]);
                 glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, 0);
             }
         }
     }
 
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    {
-        glUseProgram(game_state.fbo_shader);
-        glBindVertexArray(game_state.quad_vao);
-        glDisable(GL_DEPTH_TEST);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-    }
+    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // {
+    //     bind_shader(game_state.fbo_shader);
+    //     glBindVertexArray(game_state.quad_vao);
+    //     glDisable(GL_DEPTH_TEST);
+    //     glActiveTexture(GL_TEXTURE0);
+    //     glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
+    //     glDrawArrays(GL_TRIANGLES, 0, 6);
+    // }
 }
 /* #endregion */

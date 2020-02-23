@@ -41,7 +41,7 @@ void main()
     normal.y = -normal.y;
     normal = fs_in.TBN * normal;
 
-    vec3 ambient = u_light.ambient * u_material.ambient; // * light_color
+    // vec3 ambient = u_light.ambient * u_material.ambient; // * light_color
 
     vec3 to_light_vector =  fs_in.TBN * normalize(u_light.position - fs_in.vertex_pos);
 
@@ -50,12 +50,12 @@ void main()
     vec4 material_diffuse = texture(u_texture, fs_in.vertex_texture);
     vec4 diffuse = vec4(u_light.diffuse, 1.0) * (diff * material_diffuse); // u_material.diffuse
 
-    // vec3 view_dir = normalize(u_cameraPos - vertex_pos);
-    // vec3 reflect_dir = reflect(-to_light_vector, norm);
+    // vec3 view_dir = normalize(u_cameraPos - fs_in.vertex_pos);
+    // vec3 reflect_dir = reflect(-to_light_vector, normal);
     // float spec = pow(max(dot(view_dir, reflect_dir), 0.0), u_material.shininess);
     // vec3 specular = u_light.ambient * (spec * u_material.specular);
 
-    frag_color = diffuse;
+    frag_color = diffuse; // + vec4(specular, 1.0) + vec4(ambient, 1.0);
 
     // float gamma = 2.2;
     // frag_color.rgb = pow(frag_color.rgb, vec3(1.0 / gamma));
