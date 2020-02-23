@@ -28,7 +28,6 @@
 
 #define EXPORT_METHOD extern "C"
 
-/* #region structs */
 struct GameState
 {
     Shader basic_shader;
@@ -45,30 +44,6 @@ struct GameState
     glm::mat4 view_matrix;
 
     float exposure = 1.0;
-
-    unsigned int mesh_vertex_vbo;
-    unsigned int mesh_texture_vbo;
-    unsigned int mesh_normal_vbo;
-    unsigned int mesh_tangent_vbo;
-    unsigned int mesh_bitangent_vbo;
-
-    unsigned int mesh_vao;
-    unsigned int mesh_ibo;
-
-    unsigned int texture;
-    unsigned int normal_texture;
-
-    float model_scale = 1;
-
-    glm::vec3 light_position;
-    glm::vec3 light_ambient{0.0f, 0.0f, 0.0f};
-    glm::vec3 light_diffuse{0.5f, 0.5f, 0.5f};
-    glm::vec3 light_specular{0.5f, 0.5f, 0.5f};
-
-    glm::vec3 material_ambient{0.5f, 0.5f, 0.5f};
-    glm::vec3 material_diffuse{0.5f, 0.5f, 0.5f};
-    glm::vec3 material_specular{0.5f, 0.5f, 0.5f};
-    int material_shininess = 32;
 
     glm::vec3 camera_pos{0.0f, 0.0f, 3.0f};
     glm::vec3 camera_front{0.0f, 0.0f, -1.0f};
@@ -101,7 +76,6 @@ struct SharedData
 
     bool game_focussed = true;
 };
-/* #endregion */
 
 GameState game_state;
 SharedData *shared_data;
@@ -133,106 +107,6 @@ unsigned int load_texture(const char *path)
     printf("Loaded texture (%d) %s\n", texture, path);
 
     return texture;
-}
-
-void load_quad_mesh()
-{
-    float vertices[] = {
-        0.5f, 0.5f, 0.0f,   // top right
-        0.5f, -0.5f, 0.0f,  // bottom right
-        -0.5f, -0.5f, 0.0f, // bottom left
-        -0.5f, 0.5f, 0.0f   // top left
-    };
-
-    float texture[] = {
-        1.0f, 0.0f, //
-        1.0f, 1.0f, //
-        0.0f, 1.0f, //
-        0.0f, 0.0f, //
-    };
-
-    float normals[] = {
-        0.0f, 0.0f, -1.0f, //
-        0.0f, 0.0f, -1.0f, //
-        0.0f, 0.0f, -1.0f, //
-        0.0f, 0.0f, -1.0f, //
-    };
-
-    float tangents[] = {
-        -1.0f, 0.0f, 0.0f, //
-        0.0f, 1.0f, 0.0f,  //
-        1.0f, 0.0f, 0.0f,  //
-        0.0f, -1.0f, 0.0f  //
-    };
-
-    float bitangents[] = {
-        0.0f, -1.0f, 0.0f, //
-        -1.0f, 0.0f, 0.0f, //
-        0.0f, 1.0f, 0.0f,  //
-        1.0f, 0.0f, 0.0f,  //
-    };
-
-    unsigned int indices[] = {
-        0, 1, 3, // first Triangle
-        1, 2, 3  // second Triangle
-    };
-
-    glGenVertexArrays(1, &game_state.mesh_vao);
-    glGenBuffers(1, &game_state.mesh_vertex_vbo);
-    glGenBuffers(1, &game_state.mesh_texture_vbo);
-    glGenBuffers(1, &game_state.mesh_normal_vbo);
-    glGenBuffers(1, &game_state.mesh_tangent_vbo);
-    glGenBuffers(1, &game_state.mesh_bitangent_vbo);
-    glGenBuffers(1, &game_state.mesh_ibo);
-
-    glBindVertexArray(game_state.mesh_vao);
-
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_vertex_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_texture_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(texture), texture, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(1);
-
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_normal_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(normals), normals, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(2);
-
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_tangent_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(tangents), tangents, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(3);
-    glBindBuffer(GL_ARRAY_BUFFER, game_state.mesh_bitangent_vbo);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(bitangents), bitangents, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(4);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-}
-
-void delete_quad_mesh()
-{
-    glDeleteVertexArrays(1, &game_state.mesh_vao);
-    glDeleteBuffers(1, &game_state.mesh_vertex_vbo);
-    glDeleteBuffers(1, &game_state.mesh_texture_vbo);
-    glDeleteBuffers(1, &game_state.mesh_normal_vbo);
-    glDeleteBuffers(1, &game_state.mesh_tangent_vbo);
-    glDeleteBuffers(1, &game_state.mesh_bitangent_vbo);
-    glDeleteBuffers(1, &game_state.mesh_ibo);
 }
 
 void load_cube_mesh()
@@ -283,7 +157,6 @@ void delete_cube_mesh()
     glDeleteBuffers(1, &game_state.cube_vertices_vbo);
 }
 
-/* #region fbo */
 void load_fbo_quad()
 {
     float vertices[] = {
@@ -387,9 +260,7 @@ unsigned int generate_fbo(unsigned int texture_id, unsigned int render_buffer_id
 
     return id;
 }
-/* #endregion */
 
-/* #region camera */
 void update_camera()
 {
     const float camera_speed = 0.05f;
@@ -445,49 +316,22 @@ void update_camera()
         game_state.view_matrix = glm::lookAt(game_state.camera_pos, game_state.camera_pos + game_state.camera_front, game_state.camera_up);
     }
 }
-/* #endregion */
 
-/* #region export */
 EXPORT_METHOD bool init(void *shared_data_location)
 {
-    // glEnable(GL_FRAMEBUFFER_SRGB);
-
     shared_data = (SharedData *)shared_data_location;
 
-    if (!load_shader_program("res/shaders/basic.vert", "res/shaders/basic.frag", game_state.basic_shader))
+    if (!load_shader_program("res/shaders/fbo.vert", "res/shaders/fbo.frag", game_state.fbo_shader))
         return false;
 
-    if (!load_shader_program("res/shaders/fbo.vert", "res/shaders/fbo.frag", game_state.fbo_shader))
+    if (!load_shader_program("res/shaders/voxel.vert", "res/shaders/voxel.frag", game_state.voxel_shader))
         return false;
 
     game_state.fbo_texture = generate_texture(shared_data->width, shared_data->height);
     game_state.fbo_rbo = generate_render_buffer(shared_data->width, shared_data->height);
     game_state.fbo = generate_fbo(game_state.fbo_texture, game_state.fbo_rbo);
+
     load_fbo_quad();
-
-    glm::mat4 trans = glm::mat4(1.0f);
-    trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    trans = glm::rotate(trans, glm::radians(0.0f), glm::vec3(0.0, 0.0, 1.0));
-    trans = glm::scale(trans, glm::vec3(1.0, 1.0, 1.0));
-
-    bind_shader(game_state.basic_shader);
-
-    game_state.light_position.z = -1.95f;
-
-    load_quad_mesh();
-
-    uniform_1i("u_texture", 0);
-    uniform_1i("u_normal_texture", 1);
-
-    update_camera();
-
-    bind_shader(game_state.fbo_shader);
-
-    if (!load_shader_program("res/shaders/voxel.vert", "res/shaders/voxel.frag", game_state.voxel_shader))
-        return false;
-
-    bind_shader(game_state.voxel_shader);
-
     load_cube_mesh();
 
     read_voxel("res/models/monu9.vox", game_state.voxel);
@@ -503,14 +347,10 @@ EXPORT_METHOD void deinit()
     glDeleteRenderbuffers(1, &game_state.fbo_rbo);
     glDeleteFramebuffers(1, &game_state.fbo);
 
-    delete_quad_mesh();
     delete_fbo_quad();
 
-    delete_shader(game_state.basic_shader);
     delete_shader(game_state.fbo_shader);
     delete_shader(game_state.voxel_shader);
-    glDeleteTextures(1, &game_state.texture);
-    glDeleteTextures(1, &game_state.normal_texture);
 
     delete_cube_mesh();
 
@@ -523,7 +363,6 @@ EXPORT_METHOD void imgui_draw()
 
     ImGui::Text("Id: %d", game_state.basic_shader.id);
     ImGui::Text("Uniforms: %lu", game_state.basic_shader.uniforms.size());
-    // ImGui::Text("Attributes: %d", game_state.attribute_count);
 
     if (ImGui::CollapsingHeader("Uniforms"))
     {
@@ -533,37 +372,11 @@ EXPORT_METHOD void imgui_draw()
         }
     }
 
-    // if (ImGui::CollapsingHeader("Attributes"))
-    // {
-    //     for (int i = 0; i < game_state.attribute_count; i++)
-    //         ImGui::Text("%s\n", game_state.attribute_names[i]);
-    // }
-
     ImGui::End();
 
     ImGui::Begin("Rendering");
 
-    ImGui::SliderFloat("Scale", &game_state.model_scale, 1, 20);
     ImGui::SliderFloat("Exposure", &game_state.exposure, 0, 5);
-
-    if (ImGui::CollapsingHeader("Lighting"))
-    {
-        ImGui::SliderFloat("X", &game_state.light_position.x, -1, 1);
-        ImGui::SliderFloat("Y", &game_state.light_position.y, -1, 1);
-        ImGui::SliderFloat("Z", &game_state.light_position.z, -1, -1.999);
-
-        ImGui::SliderFloat3("Light Ambient", glm::value_ptr(game_state.light_ambient), 0, 1);
-        ImGui::SliderFloat3("Light Diffuse", glm::value_ptr(game_state.light_diffuse), 0, 10);
-        ImGui::SliderFloat3("Light Specular", glm::value_ptr(game_state.light_specular), 0, 1);
-    }
-
-    if (ImGui::CollapsingHeader("Material"))
-    {
-        ImGui::SliderFloat3("Mat Ambient", glm::value_ptr(game_state.material_ambient), 0, 1);
-        ImGui::SliderFloat3("Mat Diffuse", glm::value_ptr(game_state.material_diffuse), 0, 10);
-        ImGui::SliderFloat3("Mat Specular", glm::value_ptr(game_state.material_specular), 0, 1);
-        ImGui::SliderInt("Light Shininess", &game_state.material_shininess, 0, 100);
-    }
 
     ImGui::End();
 
@@ -584,40 +397,11 @@ EXPORT_METHOD void resize(unsigned int width, unsigned int height)
     game_state.fbo = generate_fbo(game_state.fbo_texture, game_state.fbo_rbo);
 }
 
-float counter = 0;
-
 EXPORT_METHOD void update(float delta)
 {
     glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)shared_data->width / (float)shared_data->height, 0.1f, 1000.0f);
-    // bind_shader(game_state.basic_shader);
-    // uniform_mat4("u_projection", proj);
-
-    game_state.light_position.y = sin(counter) / 3.0f;
-    game_state.light_position.x = cos(counter) / 3.0f;
-    counter += delta;
 
     update_camera();
-
-    // bind_shader(game_state.basic_shader);
-    // uniform_3f("u_light_pos", game_state.light_position);
-    // uniform_3f("u_light_ambient", game_state.light_ambient);
-    // uniform_3f("u_light_diffuse", game_state.light_diffuse);
-    // uniform_3f("u_light_specular", game_state.light_specular);
-
-    // uniform_3f("u_ambient", game_state.material_ambient);
-    // uniform_3f("u_diffuse", game_state.material_diffuse);
-    // uniform_3f("u_specular", game_state.material_specular);
-    // uniform_1i("u_shininess", game_state.material_shininess);
-
-    // uniform_3f("u_cameraPos", game_state.camera_pos);
-
-    // uniform_mat4("u_view", game_state.view_matrix);
-
-    // glm::mat4 trans = glm::mat4(1.0f);
-    // trans = glm::translate(trans, glm::vec3(0, 0, -2));
-    // // trans = glm::rotate(trans, glm::radians(-90.0f), glm::vec3(0.0, 1.0, 0.0));
-    // trans = glm::scale(trans, glm::vec3(game_state.model_scale));
-    // uniform_mat4("u_transform", trans);
 
     bind_shader(game_state.fbo_shader);
     uniform_1f("u_exposure", game_state.exposure);
@@ -629,22 +413,12 @@ EXPORT_METHOD void update(float delta)
 
 EXPORT_METHOD void render()
 {
-    // glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
     {
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, game_state.texture);
-        // glActiveTexture(GL_TEXTURE1);
-        // glBindTexture(GL_TEXTURE_2D, game_state.normal_texture);
-
-        // bind_shader(game_state.basic_shader);
-        // glBindVertexArray(game_state.mesh_vao);
-        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.mesh_ibo);
-        // glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
+    
         bind_shader(game_state.voxel_shader);
         glBindVertexArray(game_state.cube_vao);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
@@ -672,14 +446,13 @@ EXPORT_METHOD void render()
         }
     }
 
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // {
-    //     bind_shader(game_state.fbo_shader);
-    //     glBindVertexArray(game_state.quad_vao);
-    //     glDisable(GL_DEPTH_TEST);
-    //     glActiveTexture(GL_TEXTURE0);
-    //     glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
-    //     glDrawArrays(GL_TRIANGLES, 0, 6);
-    // }
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    {
+        bind_shader(game_state.fbo_shader);
+        glBindVertexArray(game_state.quad_vao);
+        glDisable(GL_DEPTH_TEST);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, game_state.fbo_texture);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+    }
 }
-/* #endregion */
