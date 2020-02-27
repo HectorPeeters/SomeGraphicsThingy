@@ -1,5 +1,7 @@
 #include "magica_voxel.h"
 
+bool first_chunk = true;
+
 bool read_voxel_header(FILE *file)
 {
     const unsigned char header[] = {0x56, 0x4F, 0x58, 0x20};
@@ -16,11 +18,12 @@ bool read_voxel_header(FILE *file)
 
 bool read_voxel_chunk_size(FILE *file, VoxelMesh &result, long &pos)
 {
-    if (result.current_mesh != nullptr)
+    if (!first_chunk)
     {
         result.sub_meshes.push_back(*result.current_mesh);
         result.current_mesh = new VoxelData();
     }
+    first_chunk = false;
 
     fread(&result.current_mesh->size_x, 4, 1, file);
     pos += 4;
@@ -109,9 +112,9 @@ const char *read_voxel_chunk_string(FILE *file, long &pos)
         pos++;
     }
 
-#ifdef VOXEL_DEBUG
+// #ifdef VOXEL_DEBUG
     printf("\tString: %s\n", result);
-#endif
+// #endif
 
     delete[] result;
 
@@ -124,9 +127,9 @@ bool read_voxel_chunk_dict(FILE *file, long &pos)
     fread(&n, 4, 1, file);
     pos += 4;
 
-#ifdef VOXEL_DEBUG
+// #ifdef VOXEL_DEBUG
     printf("Dict length: %d\n", n);
-#endif
+// #endif
 
     for (int i = 0; i < n; i++)
     {
@@ -271,9 +274,9 @@ bool read_voxel_chunk(FILE *file, VoxelMesh &result, long &pos)
     fread(&children_size, 4, 1, file);
     pos += 4;
 
-#ifdef VOXEL_DEBUG
+// #ifdef VOXEL_DEBUG
     printf("Chunk %s: %d %d\n", name_buff, size, children_size);
-#endif
+// #endif
 
     if (strcmp(name_buff, "MAIN") == 0)
     {
@@ -336,6 +339,7 @@ bool read_voxel(const char *path, VoxelMesh &result)
 
     result.current_mesh = new VoxelData();
 
+    first_chunk = true;
     while (pos < file_length)
     {
         if (!read_voxel_chunk(file, result, pos))
@@ -348,7 +352,7 @@ bool read_voxel(const char *path, VoxelMesh &result)
     if (result.current_mesh != nullptr)
     {
         result.sub_meshes.push_back(*result.current_mesh);
-        result.current_mesh = new VoxelData();
+        result.current_mesh = nullptr;
     }
 
     printf("Read voxel file '%s'\n", path);

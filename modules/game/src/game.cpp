@@ -22,7 +22,7 @@
 
 #include "keys.h"
 
-// #include "raytrace.cpp"
+#include "raytracer.h"
 
 #define PI 3.141592653689
 
@@ -111,29 +111,39 @@ unsigned int load_texture(const char *path)
 
 void load_cube_mesh()
 {
+    // float vertices[] = {
+    //     -1.0, -1.0, 1.0,  //
+    //     1.0, -1.0, 1.0,   //
+    //     1.0, 1.0, 1.0,    //
+    //     -1.0, 1.0, 1.0,   //
+    //     -1.0, -1.0, -1.0, //
+    //     1.0, -1.0, -1.0,  //
+    //     1.0, 1.0, -1.0,   //
+    //     -1.0, 1.0, -1.0,  //
+    // };
+
+    // unsigned int indices[] = {
+    //     0, 1, 2, 2, 3, 0, //
+    //     1, 5, 6, 6, 2, 1, //
+    //     7, 6, 5, 5, 4, 7, //
+    //     4, 0, 3, 3, 7, 4, //
+    //     4, 5, 1, 1, 0, 4, //
+    //     3, 2, 6, 6, 7, 3, //
+    // };
+
     float vertices[] = {
-        -1.0, -1.0, 1.0,  //
-        1.0, -1.0, 1.0,   //
-        1.0, 1.0, 1.0,    //
-        -1.0, 1.0, 1.0,   //
-        -1.0, -1.0, -1.0, //
-        1.0, -1.0, -1.0,  //
-        1.0, 1.0, -1.0,   //
-        -1.0, 1.0, -1.0,  //
+        0.0f,
+        0.0f,
+        0.0f,
     };
 
-    unsigned int indices[] = {
-        0, 1, 2, 2, 3, 0, //
-        1, 5, 6, 6, 2, 1, //
-        7, 6, 5, 5, 4, 7, //
-        4, 0, 3, 3, 7, 4, //
-        4, 5, 1, 1, 0, 4, //
-        3, 2, 6, 6, 7, 3, //
-    };
+    // unsigned int indices[] = {
+    //     0,
+    // };
 
     glGenVertexArrays(1, &game_state.cube_vao);
     glGenBuffers(1, &game_state.cube_vertices_vbo);
-    glGenBuffers(1, &game_state.cube_ibo);
+    // glGenBuffers(1, &game_state.cube_ibo);
 
     glBindVertexArray(game_state.cube_vao);
 
@@ -143,11 +153,11 @@ void load_cube_mesh()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
@@ -197,6 +207,38 @@ void load_fbo_quad()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glBindVertexArray(0);
+}
+
+void convert_voxel_to_mesh(VoxelMesh &voxel)
+{
+    for (int i = 0; i < voxel.sub_meshes.size(); i++)
+    {
+        glGenVertexArrays(1, &voxel.sub_meshes[i].vao_id);
+        glGenBuffers(1, &voxel.sub_meshes[i].vbo_id);
+
+        glBindVertexArray(voxel.sub_meshes[i].vao_id);
+
+        float *vertices = new float[voxel.sub_meshes[i].voxel_count * 4];
+
+        for (int j = 0; j < voxel.sub_meshes[i].voxel_count; j++)
+        {
+            vertices[j * 4 + 0] = voxel.sub_meshes[i].voxels[j].x;
+            vertices[j * 4 + 1] = voxel.sub_meshes[i].voxels[j].y;
+            vertices[j * 4 + 2] = voxel.sub_meshes[i].voxels[j].z;
+            vertices[j * 4 + 3] = voxel.sub_meshes[i].voxels[j].color_index;
+        }
+
+        glBindBuffer(GL_ARRAY_BUFFER, voxel.sub_meshes[i].vbo_id);
+        glBufferData(GL_ARRAY_BUFFER, voxel.sub_meshes[i].voxel_count * 4 * sizeof(float), vertices, GL_STATIC_DRAW);
+
+        delete[] vertices;
+
+        glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+        glEnableVertexAttribArray(0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
 }
 
 void delete_fbo_quad()
@@ -335,9 +377,14 @@ EXPORT_METHOD bool init(void *shared_data_location)
     load_cube_mesh();
 
     read_voxel("res/models/monu9.vox", game_state.voxel);
+    convert_voxel_to_mesh(game_state.voxel);
+
+    bind_shader(game_state.voxel_shader);
+    glUniform4fv(glGetUniformLocation(game_state.voxel_shader.id, "u_colors"), 256,  glm::value_ptr(game_state.voxel.colors[0]));
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
+    glEnable(GL_PROGRAM_POINT_SIZE);
 
     return true;
 }
@@ -361,12 +408,12 @@ EXPORT_METHOD void imgui_draw()
 {
     ImGui::Begin("Shader Viewer");
 
-    ImGui::Text("Id: %d", game_state.basic_shader.id);
-    ImGui::Text("Uniforms: %lu", game_state.basic_shader.uniforms.size());
+    ImGui::Text("Id: %d", game_state.voxel_shader.id);
+    ImGui::Text("Uniforms: %lu", game_state.voxel_shader.uniforms.size());
 
     if (ImGui::CollapsingHeader("Uniforms"))
     {
-        for (auto pair : game_state.basic_shader.uniforms)
+        for (auto pair : game_state.voxel_shader.uniforms)
         {
             ImGui::Text("%s: %d", pair.first.c_str(), pair.second);
         }
@@ -413,37 +460,48 @@ EXPORT_METHOD void update(float delta)
 
 EXPORT_METHOD void render()
 {
+    // glPointSize(20);
     glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
     {
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-    
+
         bind_shader(game_state.voxel_shader);
-        glBindVertexArray(game_state.cube_vao);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
+        // glBindVertexArray(game_state.cube_vao);
+        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
 
-        for (int j = 0; j < static_cast<int>(game_state.voxel.sub_meshes.size()); j++)
+        for (auto sub : game_state.voxel.sub_meshes)
         {
-            VoxelData data = game_state.voxel.sub_meshes[j];
+            glBindVertexArray(sub.vao_id);
 
-            if (data.voxel_count == -1)
-                continue;
-
-            for (int i = 0; i < data.voxel_count; i++)
-            {
-                Voxel voxel = data.voxels[i];
-
-                glm::mat4 trans = glm::mat4(1.0f);
-                trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
-                trans = glm::scale(trans, glm::vec3(1 / 32.0f));
-
-                uniform_mat4("u_transform", trans);
-
-                uniform_4f("u_color", game_state.voxel.colors[voxel.color_index]);
-                glDrawElements(GL_TRIANGLES, 6 * 6, GL_UNSIGNED_INT, 0);
-            }
+            glm::mat4 trans = glm::scale(glm::mat4(1.0f), glm::vec3(1 / 16.0f, 1 / 16.0f, 1 / 16.0f));
+            uniform_mat4("u_transform", trans);
+            // trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
+            glDrawArrays(GL_POINTS, 0, sub.voxel_count);
         }
+
+        // for (int j = 0; j < static_cast<int>(game_state.voxel.sub_meshes.size()); j++)
+        // {
+        //     VoxelData data = game_state.voxel.sub_meshes[j];
+
+        //     if (data.voxel_count == -1)
+        //         continue;
+
+        //     for (int i = 0; i < data.voxel_count; i++)
+        //     {
+        //         Voxel voxel = data.voxels[i];
+
+        //         glm::mat4 trans = glm::mat4(1.0f);
+        //         trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
+        //         // trans = glm::scale(trans, glm::vec3(1 / 32.0f));
+
+        //         uniform_mat4("u_transform", trans);
+
+        //         uniform_4f("u_color", game_state.voxel.colors[voxel.color_index]);
+        //         glDrawArrays(GL_POINTS, 0, 1);
+        //     }
+        // }
     }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

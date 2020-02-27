@@ -15,7 +15,7 @@ ifeq ($(config),debug)
   TARGETDIR = bin/Debug
   TARGET = $(TARGETDIR)/Squirrel
   OBJDIR = obj/Debug/Debug/Squirrel
-  DEFINES += -DDEBUG
+  DEFINES += -DDEBUG -DDEBUG_SHADER
   INCLUDES += -I/usr/include/GLFW -I/usr/include/GL -Imodules/imgui -Imodules/glad/include
   FORCE_INCLUDE +=
   ALL_CPPFLAGS += $(CPPFLAGS) -MMD -MP $(DEFINES) $(INCLUDES)

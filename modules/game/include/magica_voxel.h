@@ -9,9 +9,9 @@
 
 struct Voxel
 {
+    unsigned char z;
     unsigned char x;
     unsigned char y;
-    unsigned char z;
     unsigned char color_index;
 };
 
@@ -19,14 +19,17 @@ struct VoxelData
 {
     unsigned int size_x, size_y, size_z;
     unsigned int voxel_count = -1;
+    unsigned int vao_id;
+    unsigned int vbo_id;
     Voxel *voxels;
 };
 
 struct VoxelMesh
 {
     std::vector<VoxelData> sub_meshes;
-    VoxelData *current_mesh;
+    VoxelData *current_mesh = nullptr;
     glm::vec4 colors[256];
+    int vao_id;
 };
 
 bool read_voxel_header(FILE *file);
