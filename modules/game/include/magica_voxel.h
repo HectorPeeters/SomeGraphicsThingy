@@ -22,6 +22,9 @@ struct VoxelData
     unsigned int vao_id;
     unsigned int vbo_id;
     Voxel *voxels;
+    unsigned int x;
+    unsigned int y;
+    unsigned int z;
 };
 
 struct VoxelMesh
@@ -48,4 +51,4 @@ bool read_voxel_chunk(FILE *file, VoxelMesh &result, long &pos);
 bool read_voxel(const char *path, VoxelMesh &result);
 void delete_voxel(VoxelMesh &data);
 
-unsigned int switch_endian(unsigned int x);
+int switch_endian(int x);

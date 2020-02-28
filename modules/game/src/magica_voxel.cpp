@@ -67,14 +67,14 @@ bool read_voxel_chunk_xyzi(FILE *file, VoxelMesh &result, long &pos)
         result.current_mesh->voxels[i].color_index--;
 
 #ifdef VOXEL_DEBUG
-        printf("\t%d %d %d: %d\n", result.current_mesh->voxels[i].x, result.current_mesh->voxels[i].y, result.current_mesh->voxels[i].z, result.current_mesh->voxels[i].color_index);
+        // printf("\t%d %d %d: %d\n", result.current_mesh->voxels[i].x, result.current_mesh->voxels[i].y, result.current_mesh->voxels[i].z, result.current_mesh->voxels[i].color_index);
 #endif
     }
 
     return true;
 }
 
-unsigned int switch_endian(unsigned int x)
+int switch_endian(int x)
 {
     return (((x >> 24) & 0x000000ff) | ((x >> 8) & 0x0000ff00) | ((x << 8) & 0x00ff0000) | ((x << 24) & 0xff000000));
 }
@@ -115,7 +115,8 @@ bool read_voxel_chunk_string(FILE *file, long &pos)
         return false;
     pos += 4;
 
-    const char *r = new char[length];
+    char *r = new char[length + 1];
+    r[length] = '\0';
 
     for (int i = 0; i < length; i++)
     {
@@ -158,7 +159,8 @@ bool read_voxel_chunk_ntrn(FILE *file, VoxelMesh &result, long &pos)
         return false;
     pos += 4;
 
-    read_voxel_chunk_dict(file, pos);
+    if (!read_voxel_chunk_dict(file, pos))
+        return false;
 
     int child_id;
     if (!fread(&child_id, 4, 1, file))
@@ -187,6 +189,60 @@ bool read_voxel_chunk_ntrn(FILE *file, VoxelMesh &result, long &pos)
         return false;
 
     read_voxel_chunk_dict(file, pos);
+
+    // int dict_size;
+    // if (!fread(&dict_size, 4, 1, file))
+    //     return false;
+    // pos += 4;
+
+    // for (int i = 0; i < dict_size; i++)
+    // {
+
+    //     int name_size;
+    //     if (!fread(&name_size, 4, 1, file))
+    //         return false;
+    //     pos += 4;
+
+    //     char *name_buff = new char[name_size + 1];
+
+    //     if (!fread(&name_buff[0], name_size, 1, file))
+    //         return false;
+    //     pos += name_size;
+
+    //     name_buff[name_size] = '\0';
+
+    //     unsigned int value_size;
+    //     if (!fread(&value_size, 4, 1, file))
+    //         return false;
+
+    //     char *value = new char[value_size + 1];
+    //     value[value_size] = '\0';
+
+    //     if (!fread(value, value_size, 1, file))
+    //         return false;
+    //     pos += value_size;
+
+    //     // fseek(file, value_size, SEEK_CUR);
+    //     if (strcmp(name_buff, "_t") == 0)
+    //     {
+    //         // sscanf(value, "%i %i %i\n", &result.sub_meshes[layer_id].x, &result.sub_meshes[layer_id].y, &result.sub_meshes[layer_id].z);
+    //         // printf("%i %i %i\n", result.current_mesh->x, result.current_mesh->y, result.current_mesh->z);
+    //     }
+    //     else if (strcmp(name_buff, "_r") == 0)
+    //     {
+            
+    //     }
+    //     else
+    //     {
+    //         fprintf(stderr, "Invalid dict entry in nTRN chunk\n");
+    //         delete[] name_buff;
+    //         delete[] value;
+    //         return false;
+    //     }
+
+    //     delete[] name_buff;
+    //     delete[] value;
+    // }
 
     return true;
 }

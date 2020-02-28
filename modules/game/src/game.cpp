@@ -460,7 +460,6 @@ EXPORT_METHOD void update(float delta)
 
 EXPORT_METHOD void render()
 {
-    // glPointSize(20);
     glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
     {
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
@@ -468,41 +467,17 @@ EXPORT_METHOD void render()
         glEnable(GL_DEPTH_TEST);
 
         bind_shader(game_state.voxel_shader);
-        // glBindVertexArray(game_state.cube_vao);
-        // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, game_state.cube_ibo);
-
+ 
         for (auto sub : game_state.voxel.sub_meshes)
         {
             glBindVertexArray(sub.vao_id);
 
             glm::mat4 trans = glm::scale(glm::mat4(1.0f), glm::vec3(1 / 16.0f, 1 / 16.0f, 1 / 16.0f));
+            // trans = glm::translate(trans, glm::vec3(sub.x, sub.y, sub.z));
             uniform_mat4("u_transform", trans);
-            // trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
             glDrawArrays(GL_POINTS, 0, sub.voxel_count);
         }
-
-        // for (int j = 0; j < static_cast<int>(game_state.voxel.sub_meshes.size()); j++)
-        // {
-        //     VoxelData data = game_state.voxel.sub_meshes[j];
-
-        //     if (data.voxel_count == -1)
-        //         continue;
-
-        //     for (int i = 0; i < data.voxel_count; i++)
-        //     {
-        //         Voxel voxel = data.voxels[i];
-
-        //         glm::mat4 trans = glm::mat4(1.0f);
-        //         trans = glm::translate(trans, glm::vec3(voxel.x / 16.0f, voxel.z / 16.0f, voxel.y / 16.0f));
-        //         // trans = glm::scale(trans, glm::vec3(1 / 32.0f));
-
-        //         uniform_mat4("u_transform", trans);
-
-        //         uniform_4f("u_color", game_state.voxel.colors[voxel.color_index]);
-        //         glDrawArrays(GL_POINTS, 0, 1);
-        //     }
-        // }
-    }
+   }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     {
