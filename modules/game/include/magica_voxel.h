@@ -36,7 +36,7 @@ bool read_voxel_header(FILE *file);
 bool read_voxel_chunk_size(FILE *file, VoxelMesh &result, long &pos);
 bool read_voxel_chunk_xyzi(FILE *file, VoxelMesh &result, long &pos);
 bool read_voxel_chunk_rgba(FILE *file, VoxelMesh &result, long &pos);
-const char *read_voxel_chunk_string(FILE *file, long &pos);
+bool read_voxel_chunk_string(FILE *file, long &pos);
 bool read_voxel_chunk_dict(FILE *file, long &pos);
 bool read_voxel_chunk_ntrn(FILE *file, VoxelMesh &result, long &pos);
 bool read_voxel_chunk_ngrp(FILE *file, VoxelMesh &result, long &pos);
