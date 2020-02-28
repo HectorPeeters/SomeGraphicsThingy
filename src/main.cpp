@@ -29,6 +29,8 @@ struct EngineState
     int old_library_timestamp;
 
     std::time_t last_reload_notification_time;
+
+    bool vsync = true;
 };
 
 struct SharedData
@@ -395,8 +397,6 @@ Window create_window()
     glfwSetKeyCallback(window, key_callback);
     glfwSetCursorPosCallback(window, cursor_position_callback);
 
-    glfwSwapInterval(1);
-
     return window;
 }
 
@@ -447,6 +447,12 @@ void draw_menu_bar()
         ImGui::Spacing();
 
         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+
+        ImGui::Spacing();
+ 
+        if (ImGui::Checkbox("VSync", &engine_state.vsync)) {
+            glfwSwapInterval(engine_state.vsync ? 1 : 0);
+        }
 
         ImGui::EndMainMenuBar();
     }
