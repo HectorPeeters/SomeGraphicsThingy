@@ -43,7 +43,8 @@ struct GameState
 
     glm::mat4 view_matrix;
 
-    float exposure = 1.0;
+    float exposure = 2.0;
+    float gamma = 0.6;
 
     glm::vec3 camera_pos{0.0f, 0.0f, 3.0f};
     glm::vec3 camera_front{0.0f, 0.0f, -1.0f};
@@ -424,6 +425,7 @@ EXPORT_METHOD void imgui_draw()
     ImGui::Begin("Rendering");
 
     ImGui::SliderFloat("Exposure", &game_state.exposure, 0, 5);
+    ImGui::SliderFloat("Gamma", &game_state.gamma, 0, 5);
 
     ImGui::End();
 
@@ -452,6 +454,7 @@ EXPORT_METHOD void update(float delta)
 
     bind_shader(game_state.fbo_shader);
     uniform_1f("u_exposure", game_state.exposure);
+    uniform_1f("u_gamma", game_state.gamma);
 
     bind_shader(game_state.voxel_shader);
     uniform_mat4("u_view", game_state.view_matrix);

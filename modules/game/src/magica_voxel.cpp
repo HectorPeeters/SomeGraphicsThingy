@@ -4,6 +4,8 @@ bool first_chunk = true;
 
 // #define VOXEL_DEBUG
 
+int voxel_count;
+
 bool read_voxel_header(FILE *file)
 {
     const unsigned char header[] = {0x56, 0x4F, 0x58, 0x20};
@@ -63,6 +65,7 @@ bool read_voxel_chunk_xyzi(FILE *file, VoxelMesh &result, long &pos)
         if (!fread(&result.current_mesh->voxels[i], 4, 1, file))
             return false;
         pos += 4;
+        voxel_count++;
 
         result.current_mesh->voxels[i].color_index--;
 
@@ -446,6 +449,7 @@ bool read_voxel(const char *path, VoxelMesh &result)
     }
 
     printf("Read voxel file '%s'\n", path);
+    printf("%d\n", voxel_count);
 
 read_voxel_end:
     fclose(file);
