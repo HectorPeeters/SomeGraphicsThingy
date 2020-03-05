@@ -10,7 +10,7 @@ project "Game"
 
     includedirs { "include/", "../imgui", "../glad/include", "usr/include/glm", "usr/include/zlib.h" }
 
-    links { "z" }
+    -- links { "z" }
     
     filter "configurations:Debug"
         defines { "DEBUG" }

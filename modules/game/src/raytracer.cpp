@@ -2,10 +2,9 @@
 
 HitData get_hit(Ray &ray, std::vector<glm::vec4> voxels)
 {
-    
+
     for (auto vox : voxels)
     {
-
     }
     return HitData{hit : true};
 }

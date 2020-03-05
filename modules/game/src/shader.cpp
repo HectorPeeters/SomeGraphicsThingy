@@ -181,6 +181,28 @@ bool uniform_1f(std::string name, float value)
     return true;
 }
 
+bool uniform_2f(std::string name, glm::vec2 &value)
+{
+    if (bound_shader == nullptr)
+        return false;
+
+#ifdef DEBUG_SHADER
+    if (bound_shader->uniforms.find(name) == bound_shader->uniforms.end())
+    {
+        printf("Uniform '%s' in '%s' does not exist\n", name.c_str(), bound_shader->name.c_str());
+        return false;
+    }
+#endif
+
+    unsigned int uniform_location = bound_shader->uniforms[name];
+    if (uniform_location == 0)
+        return false;
+
+    glUniform2f(uniform_location, value.x, value.y);
+
+    return true;
+}
+
 bool uniform_3f(std::string name, glm::vec3 &value)
 {
     if (bound_shader == nullptr)
