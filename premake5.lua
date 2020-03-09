@@ -16,6 +16,7 @@ workspace "Squirrel"
 include "modules/game"
 include "modules/imgui"
 include "modules/glad"
+include "modules/tests"
 
 project "Squirrel"
     kind "ConsoleApp"

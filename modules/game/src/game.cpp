@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <glad/glad.h>
+#include<glad/glad.h>
 #include <imgui.h>
 
 #include <glm/glm.hpp>

@@ -1,5 +1,5 @@
-project "Game"
-    kind "SharedLib"
+project "Tests"
+    kind "ConsoleApp"
     language "C++"
     targetdir "../../bin/%{cfg.buildcfg}"
     objdir "../../obj/%{cfg.buildcfg}"
@@ -8,10 +8,10 @@ project "Game"
 
     pic "On"
 
-    includedirs { "include/", "../imgui", "../glad/include", "usr/include/glm" }
-
-    -- links { "z" }
+    includedirs { "include/", "../game/include" }
     
+    links { "Game", "GL", "glfw", "Glad", "ImGui" }
+
     filter "configurations:Debug"
         defines { "DEBUG" }
         symbols "On"

@@ -1,53 +1,49 @@
 #include "raytracer.h"
 
+#include <cmath>
+
+namespace rt
+{
+
+Ray generate_ray(float u, float v)
+{
+}
+
 HitData get_hit(Ray &ray, std::vector<glm::vec4> voxels)
 {
+
+    HitData closestHit;
 
     for (auto vox : voxels)
     {
     }
+
     return HitData{hit : true};
 }
 
-HitData intersect_voxel(Ray &ray, glm::vec3 voxel)
+HitData intersect_voxel(Ray &ray, glm::vec3 voxel, float tmin, float tmax)
 {
-    glm::vec3 max = voxel + glm::vec3(1, 1, 1);
+    glm::vec3 invDir = 1.0f / ray.direction;
+    glm::vec3 t0 = (voxel - ray.origin) * invDir;
+    glm::vec3 t1 = (voxel + glm::vec3(1, 1, 1) - ray.origin) * invDir;
 
-    float tmin = (voxel.x - ray.origin.x) / ray.direction.x;
-    float tmax = (voxel.y - ray.origin.y) / ray.direction.y;
-
-    if (tmin > tmax)
+    for (int a = 0; a < 3; ++a)
     {
-        float temp = tmin;
-        tmin = tmax;
-        tmax = temp;
+        if (invDir[a] < 0.0f)
+        {
+            float temp = t1[a];
+            t1[a] = t0[a];
+            t0[a] = temp;
+        }
+
+        tmin = fmax(tmin, t0[a]);
+        tmax = fmin(tmax, t1[a]);
+
+        if (tmax <= tmin)
+            return {hit : false};
     }
-
-    float tymin = (voxel.y - ray.origin.y) / ray.direction.y;
-    float tymax = ((voxel.y + 1) - ray.origin.y) / ray.direction.y;
-
-    if (tymin > tymax)
-    {
-        float temp = tymin;
-        tymin = tymax;
-        tymax = temp;
-    }
-
-    if ((tmin > tymax) || (tymin > tmax))
-        return {hit : false};
-
-    float tzmin = (voxel.z - ray.origin.z) / ray.direction.z;
-    float tzmax = ((voxel.z + 1) - ray.origin.z) / ray.direction.z;
-
-    if (tzmin > tzmax)
-    {
-        float temp = tzmin;
-        tzmin = tzmax;
-        tzmax = temp;
-    }
-
-    if ((tmin > tzmax) || (tzmin > tmax))
-        return {hit : false};
 
     return {hit : true};
 }
+
+} // namespace rt

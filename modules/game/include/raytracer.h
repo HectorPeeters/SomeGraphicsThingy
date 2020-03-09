@@ -3,6 +3,9 @@
 #include <glm/glm.hpp>
 #include <vector>
 
+namespace rt
+{
+    
 struct Ray
 {
     glm::vec3 origin;
@@ -17,6 +20,10 @@ struct HitData
     float distance;
 };
 
+
+
 HitData get_hit(Ray &ray, std::vector<glm::vec4> voxels);
 
 HitData intersect_voxel(Ray &ray, glm::vec3 voxel);
+
+}
