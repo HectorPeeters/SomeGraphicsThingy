@@ -1,4 +1,4 @@
-make -j12
+make -j12 config=${1-debug}
 
 ret_val=$?
 

@@ -24,10 +24,12 @@ void test_assert_false()
 void test_assert_eq()
 {
     int a = 5;
-    bool b = false;
+    int b = 5;
+    bool c = false;
 
     ASSERT_EQ(a, a, "ASSERT_MEM_EQ should not fail on the same int object")
-    ASSERT_EQ(b, b, "ASSERT_MEM_EQ should not fail on the same bool object")
+    ASSERT_EQ(a, b, "ASSERT_MEM_EQ should not fail on two ints with the same value")
+    ASSERT_EQ(c, c, "ASSERT_MEM_EQ should not fail on the same bool object")
 }
 
 void test_assert_neq()

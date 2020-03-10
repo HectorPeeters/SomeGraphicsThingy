@@ -13,10 +13,11 @@ void test_start(void (*test_functions[])(), unsigned int test_count)
 
     int fail_count = 0;
 
-    for (int i = 0; i < test_count; i++) {
+    for (int i = 0; i < test_count; i++)
+    {
         test_prepare();
 
-        printf("%d/%d ", i, test_count);
+        printf("%d/%d ", i + 1, test_count);
 
         test_functions[i]();
 
@@ -26,10 +27,10 @@ void test_start(void (*test_functions[])(), unsigned int test_count)
             fail_count++;
     }
 
-    printf("\nTests finished! %d/%d passed\n", test_count - fail_count, test_count);
+    printf("\nTests finished!\n%d/%d passed\n", test_count - fail_count, test_count);
 }
 
-void test_prepare() 
+void test_prepare()
 {
     test_failed = false;
 }

@@ -1,5 +1,14 @@
-#!/bin/bash
-
 premake5 gmake
-make
-./bin/Debug/Tests
+make -j12 config=${1-debug}
+
+ret_val=$?
+
+if [ $ret_val -ne 0 ];
+then
+    echo "\nBuild failed..."
+else
+    echo "\nStarting...\n"
+    ./bin/Debug/Tests
+fi
+
+exit $ret_val

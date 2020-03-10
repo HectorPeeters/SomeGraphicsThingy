@@ -233,7 +233,7 @@ bool read_voxel_chunk_ntrn(FILE *file, VoxelMesh &result, long &pos)
     //     }
     //     else if (strcmp(name_buff, "_r") == 0)
     //     {
-            
+
     //     }
     //     else
     //     {
