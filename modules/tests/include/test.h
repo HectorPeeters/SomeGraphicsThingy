@@ -4,6 +4,7 @@ namespace test
 {
 
 void test_start(void (*test_functions[])(), unsigned int test_count);
+void process_mem_usage(double& vm_usage, double& resident_set);
 
 void test_prepare();
 bool did_fail();

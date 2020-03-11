@@ -414,7 +414,6 @@ bool read_voxel(const char *path, VoxelMesh &result)
     FILE *file = fopen(path, "rb");
     if (file == NULL)
     {
-        fprintf(stderr, "Failed to open file: %s\n", path);
         return false;
     }
 

@@ -377,7 +377,8 @@ EXPORT_METHOD bool init(void *shared_data_location)
     load_fbo_quad();
     load_cube_mesh();
 
-    read_voxel("res/models/monu9.vox", game_state.voxel);
+    if (!read_voxel("res/models/monu9.vox", game_state.voxel))
+        fprintf(stderr, "Failed to open file");
     convert_voxel_to_mesh(game_state.voxel);
 
     bind_shader(game_state.voxel_shader);
