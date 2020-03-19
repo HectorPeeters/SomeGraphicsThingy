@@ -1,3 +1,5 @@
+premake5 gmake
+echo "\nConfiguration: ${1-debug}\n"
 make -j12 config=${1-debug}
 
 ret_val=$?
@@ -7,7 +9,12 @@ then
     echo "\nBuild failed..."
 else
     echo "\nStarting...\n"
-    ./bin/Debug/Squirrel
+
+    if [ ${1-debug} = "release" ]; then
+        ./bin/Release/Squirrel
+    else
+        ./bin/Debug/Squirrel
+    fi
 fi
 
 exit $ret_val

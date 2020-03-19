@@ -112,7 +112,7 @@ bool load_shader_program(const char *vertex_path, const char *fragment_path, Sha
     //     glGetActiveAttrib(program_id, (GLuint)i, 64, &length, &size, &type, game_state.attribute_names[i]);
     // }
 
-    printf("Loaded shader (%d) %s, %s\n", program_id, vertex_path, fragment_path);
+    printf("Loaded shader (%d) '%s', '%s'\n", program_id, vertex_path, fragment_path);
 
     return true;
 }

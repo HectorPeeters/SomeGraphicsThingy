@@ -2,6 +2,9 @@
 
 #include "test.h"
 #include <stdio.h>
+#include <stdlib.h>
+
+#include <glm/glm.hpp>
 
 namespace test
 {
@@ -40,6 +43,27 @@ void test_assert_neq()
 
     ASSERT_NEQ(a, b, "ASSERT_MEM_NEQ should not fail on different int objects with different values")
     ASSERT_NEQ(b, d, "ASSERT_MEM_NEQ should not fail on different int objects of different types")
+}
+
+void test_memory_leak_detection()
+{
+    for (int i = 0; i < 1000; i++)
+    {
+        void* data = malloc(1000);
+        free(data);
+    }
+}
+
+void test_glm()
+{
+    glm::vec3 vec1(1, 0, 0);
+    glm::vec3 vec2(0, 1, 0);
+
+    glm::vec3 result = vec2 - vec1;
+
+    ASSERT_EQ(result.x, -1, "Values should be equal")
+    ASSERT_EQ(result.y, 1, "Values should be equal")
+    ASSERT_EQ(result.z, 0, "Values should be equal")
 }
 
 }

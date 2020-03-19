@@ -1,14 +1,19 @@
 premake5 gmake
+echo "\nConfiguration: ${1-debug}\n"
 make -j12 config=${1-debug}
 
 ret_val=$?
 
-if [ $ret_val -ne 0 ];
-then
+if [ $ret_val -ne 0 ]; then
     echo "\nBuild failed..."
 else
     echo "\nStarting...\n"
-    ./bin/Debug/Tests
+
+    if [ ${1-debug} = "release" ]; then
+        ./bin/Release/Tests
+    else
+        ./bin/Debug/Tests
+    fi
 fi
 
 exit $ret_val

@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include<glad/glad.h>
+#include <glad/glad.h>
 #include <imgui.h>
 
 #include <glm/glm.hpp>
@@ -42,6 +42,7 @@ struct GameState
     unsigned int quad_texture_vbo;
 
     glm::mat4 view_matrix;
+    glm::mat4 projection_matrix;
 
     float exposure = 2.0;
     float gamma = 0.6;
@@ -63,6 +64,8 @@ struct GameState
     unsigned int cube_vao;
     unsigned int cube_vertices_vbo;
     unsigned int cube_ibo;
+
+    bool raytracing = true;
 };
 
 struct SharedData
@@ -255,10 +258,10 @@ unsigned int generate_texture(unsigned int width, unsigned int height)
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGB, GL_FLOAT, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     return id;
 }
@@ -382,7 +385,7 @@ EXPORT_METHOD bool init(void *shared_data_location)
     convert_voxel_to_mesh(game_state.voxel);
 
     bind_shader(game_state.voxel_shader);
-    glUniform4fv(glGetUniformLocation(game_state.voxel_shader.id, "u_colors"), 256,  glm::value_ptr(game_state.voxel.colors[0]));
+    glUniform4fv(glGetUniformLocation(game_state.voxel_shader.id, "u_colors"), 256, glm::value_ptr(game_state.voxel.colors[0]));
 
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
@@ -425,6 +428,8 @@ EXPORT_METHOD void imgui_draw()
 
     ImGui::Begin("Rendering");
 
+    ImGui::Checkbox("Raytracing", &game_state.raytracing);
+    ImGui::Spacing();
     ImGui::SliderFloat("Exposure", &game_state.exposure, 0, 5);
     ImGui::SliderFloat("Gamma", &game_state.gamma, 0, 5);
 
@@ -445,11 +450,13 @@ EXPORT_METHOD void resize(unsigned int width, unsigned int height)
     game_state.fbo_texture = generate_texture(width, height);
     game_state.fbo_rbo = generate_render_buffer(width, height);
     game_state.fbo = generate_fbo(game_state.fbo_texture, game_state.fbo_rbo);
+
+    rt::raytrace_resize(width, height);
 }
 
 EXPORT_METHOD void update(float delta)
 {
-    glm::mat4 proj = glm::perspective(glm::radians(45.0f), (float)shared_data->width / (float)shared_data->height, 0.1f, 1000.0f);
+    game_state.projection_matrix = glm::perspective(glm::radians(45.0f), (float)shared_data->width / (float)shared_data->height, 0.1f, 1000.0f);
 
     update_camera();
 
@@ -459,19 +466,26 @@ EXPORT_METHOD void update(float delta)
 
     bind_shader(game_state.voxel_shader);
     uniform_mat4("u_view", game_state.view_matrix);
-    uniform_mat4("u_projection", proj);
+    uniform_mat4("u_projection", game_state.projection_matrix);
 }
 
 EXPORT_METHOD void render()
 {
-    glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
+    if (game_state.raytracing)
     {
+        rt::raytrace_render_scene(shared_data->width, shared_data->height, game_state.projection_matrix, game_state.view_matrix, game_state.camera_pos);
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, shared_data->width, shared_data->height, GL_RGBA, GL_FLOAT, rt::raytrace_get_data());
+    }
+    else
+    {
+        glBindFramebuffer(GL_FRAMEBUFFER, game_state.fbo);
+
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
 
         bind_shader(game_state.voxel_shader);
- 
+
         for (auto sub : game_state.voxel.sub_meshes)
         {
             glBindVertexArray(sub.vao_id);
@@ -481,7 +495,7 @@ EXPORT_METHOD void render()
             uniform_mat4("u_transform", trans);
             glDrawArrays(GL_POINTS, 0, sub.voxel_count);
         }
-   }
+    }
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     {

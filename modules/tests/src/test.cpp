@@ -42,12 +42,11 @@ void test_start(void (*test_functions[])(), unsigned int test_count)
         else
         {
             fail_count++;
-            printf("❌\n");
         }
 
         if (post_mem_usage != mem_usage)
         {
-            printf("MEMORY LEAK DETECTED: %f \n", post_mem_usage - mem_usage);
+            printf("❌\tMEMORY LEAK DETECTED: %f \n", post_mem_usage - mem_usage);
         }
     }
 
