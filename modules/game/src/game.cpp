@@ -1,11 +1,4 @@
-#include <stdio.h>
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <cmath>
-#include <vector>
-#include <stdlib.h>
-#include <string.h>
+#include "squirrel_pch.h"
 
 #include <glad/glad.h>
 #include <imgui.h>
@@ -19,9 +12,7 @@
 
 #include "magica_voxel.h"
 #include "shader.h"
-
 #include "keys.h"
-
 #include "raytracer.h"
 
 #define PI 3.141592653689

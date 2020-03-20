@@ -1,11 +1,6 @@
 #pragma once
 
-#include <stdio.h>
-#include <string.h>
-#include <fstream>
-#include <vector>
-
-#include <glm/glm.hpp>
+#include "squirrel_pch.h"
 
 struct Voxel
 {

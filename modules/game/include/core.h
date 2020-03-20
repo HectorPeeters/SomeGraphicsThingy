@@ -1,7 +1,6 @@
 #pragma once
 
-#include <stdint.h>
-#include <stdlib.h>
+#include "squirrel_pch.h"
 
 typedef uint8_t uint8;
 typedef uint16_t uint16;

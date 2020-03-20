@@ -4,6 +4,8 @@ project "Game"
     targetdir "../../bin/%{cfg.buildcfg}"
     objdir "../../obj/%{cfg.buildcfg}"
 
+    pchheader "squirrel_pch.h"
+
     files { "include/**.h", "src/**.cpp" }
 
     pic "On"

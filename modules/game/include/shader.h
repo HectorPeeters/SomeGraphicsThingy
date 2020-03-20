@@ -1,9 +1,6 @@
 #pragma once
 
-#include <map>
-#include <string>
-
-#include <glm/glm.hpp>
+#include "squirrel_pch.h"
 
 struct Shader
 {

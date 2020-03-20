@@ -28,7 +28,7 @@ void raytrace_resize(unsigned int width, unsigned int height)
 
 void calculate_screen_bounds(glm::mat4 &projection_matrix, glm::mat4 &view_matrix)
 {
-    glm::mat4 inv_proj_view = glm::inverse(projection_matrix * view_matrix);
+    glm::mat4 inv_proj_view = glm::inverse(view_matrix * projection_matrix);
 
     glm::vec4 center = inv_proj_view * glm::vec4(0, 0, 0, 0);
 
@@ -38,14 +38,21 @@ void calculate_screen_bounds(glm::mat4 &projection_matrix, glm::mat4 &view_matri
     printf("%f %f %f ; %f %f %f\n", top_left.x, top_left.y, top_left.z, bottom_right.x, bottom_right.y, bottom_right.z);
 }
 
-bool hit_sphere(const glm::vec3 &center, float radius, const glm::vec3 &origin, const glm::vec3 &dir)
+float hit_sphere(const glm::vec3 &center, float radius, const glm::vec3 &origin, const glm::vec3 &dir)
 {
     glm::vec3 oc = origin - center;
     float a = glm::dot(dir, dir);
     float b = 2.0 * glm::dot(oc, dir);
     float c = glm::dot(oc, oc) - radius * radius;
     float discriminant = b * b - 4 * a * c;
-    return (discriminant > 0);
+    if (discriminant > 0)
+    {
+        return (-b - sqrt(discriminant)) / (2.0 * a);
+    }
+    else
+    {
+        return -1.0;
+    }
 }
 
 void raytrace_render_scene(unsigned int width, unsigned int height, glm::mat4 &projection_matrix, glm::mat4 &view_matrix, glm::vec3 &camera_pos)
@@ -55,9 +62,9 @@ void raytrace_render_scene(unsigned int width, unsigned int height, glm::mat4 &p
 
     // calculate_screen_bounds(projection_matrix, view_matrix);
 
-    glm::mat4 inv_proj_view = glm::inverse(view_matrix * projection_matrix);
+    glm::mat4 inv_proj_view = glm::inverse(projection_matrix * view_matrix);
 
-    const int subdivide_count = 2;
+    const int subdivide_count = 4;
 
     frame++;
     frame %= subdivide_count * subdivide_count;
@@ -68,11 +75,6 @@ void raytrace_render_scene(unsigned int width, unsigned int height, glm::mat4 &p
     glm::vec3 ray_01 = inv_proj_view * glm::vec4(-1, 1, 0.1, 0);
     glm::vec3 ray_10 = inv_proj_view * glm::vec4(1, -1, 0.1, 0);
     glm::vec3 ray_11 = inv_proj_view * glm::vec4(1, 1, 0.1, 0);
-
-    // glm::vec3 ray_00(1, 0, 0);
-    // glm::vec3 ray_01(0, 1, 0);
-    // glm::vec3 ray_10(0, 0, 1);
-    // glm::vec3 ray_11(1, 0, 1);
 
     glm::vec3 result = ray_01 - ray_00;
 
@@ -85,7 +87,7 @@ void raytrace_render_scene(unsigned int width, unsigned int height, glm::mat4 &p
         {
             glm::vec3 ray_dir = glm::normalize(left + (right - left) * (x / (float)width));
 
-            if (hit_sphere(glm::vec3(0, 0, -10), 1, glm::vec3(0, 0, 0), ray_dir))
+            if (hit_sphere(glm::vec3(0, 0, -10), 1, glm::vec3(0, 0, 0), ray_dir) > 0)
             {
                 texture_data[(x + y * width) * 4 + 0] = 1.0;
                 texture_data[(x + y * width) * 4 + 1] = 1.0;

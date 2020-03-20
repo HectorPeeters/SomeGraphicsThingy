@@ -3,7 +3,6 @@ workspace "Squirrel"
 
     flags { "FatalWarnings", "MultiProcessorCompile", "ShadowedVariables" }
 
-
     filter "configurations:Debug"
         defines { "DEBUG", "DEBUG_SHADER" }
         symbols "On"
